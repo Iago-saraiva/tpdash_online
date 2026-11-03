@@ -46,7 +46,7 @@ class _Agente:
         rid = secrets.token_hex(12)
         ev = threading.Event()
         with self.trava:
-            self.pendentes[rid] = [ev, None]
+            self.pendentes[rid] = [ev, None, time.time()]
         pedido = {"id": rid, "op": op, **dados}
         self.fila.put(pedido)
         # se o agente caiu sem avisar, ninguém busca o pedido: desiste logo com um aviso claro
@@ -61,17 +61,20 @@ class _Agente:
             with self.trava:
                 self.pendentes.pop(rid, None)
             raise db.ErroBanco("O servidor da empresa demorou demais para responder. Tente um período menor.")
-        resp = self.pendentes.pop(rid, [None, None])[1] or {}
+        resp = self.pendentes.pop(rid, [None, None, 0])[1] or {}
         if not resp.get("ok"):
             raise db.ErroBanco(resp.get("erro") or "Erro no servidor da empresa.")
         return resp
 
     def responder(self, resp):
+        """Entrega a resposta a quem pediu. Devolve quantos segundos o pedido levou (None = pedido desconhecido)."""
         with self.trava:
             p = self.pendentes.get(str(resp.get("id")))
-        if p:                              # pedido desconhecido (expirou ou é de outro agente): ignora
-            p[1] = resp
-            p[0].set()
+        if not p:                          # pedido desconhecido (expirou ou é de outro agente): ignora
+            return None
+        p[1] = resp
+        p[0].set()
+        return time.time() - p[2]
 
     def proximos(self, espera, maximo=8):
         """Pedidos para o agente: espera o primeiro até `espera` segundos e junta os que já estiverem na fila."""

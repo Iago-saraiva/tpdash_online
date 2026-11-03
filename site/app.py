@@ -1564,6 +1564,11 @@ def agente_ola():
     d = _corpo_json()
     ag = nuvem.agente(eid)
     ag.info = {k: d.get(k) for k in ("modo", "empresa", "descricao", "status_movimento", "status_lancamento")}
+    # dados do agente para o TP DASH ADMIN (os agentes mais novos mandam também o computador e a sincronização)
+    usuarios.gravar_info_agente(eid, {
+        "modo": d.get("modo"), "codempresa": d.get("empresa"), "maquina": str(d.get("maquina") or "")[:80],
+        "sistema": str(d.get("sistema") or "")[:80], "sincronizacao": d.get("sincronizacao") if isinstance(d.get("sincronizacao"), dict) else None,
+        "conectado": time.time()})
     ag.versao = str(d.get("versao") or "")[:20]
     ag.ip = request.remote_addr or ""
     ag.visto = time.time()
@@ -1579,11 +1584,34 @@ _GRAVADO = {}             # empresa -> última vez que o "visto" foi gravado
 _LENDO_FILIAIS = set()
 
 
+_CAMPOS_FILIAL_NOMES = {
+    "NOME": "razao", "CGC": "cnpj", "INSCRICAOESTADUAL": "ie", "INSCRICAOMUNICIPAL": "im", "TELEFONE": "telefone",
+    "EMAIL": "email", "RUA": "rua", "NUMERO": "numero", "COMPLEMENTO": "complemento", "BAIRRO": "bairro",
+    "CIDADE": "cidade", "ESTADO": "uf", "CEP": "cep", "CONTATO": "contato", "INATIVO": "inativo"}
+_CAMPOS_FILIAL = ["CODFILIAL", "NOMEFANTASIA"] + list(_CAMPOS_FILIAL_NOMES)
+_FILIAL_SIMPLES = set()   # empresas cuja GFILIAL não tem esses campos (lidas só com código e nome)
+
+
 def _ler_filiais(eid):
     try:
-        _, linhas, _ = banco(eid).consultar(
-            "SELECT CODFILIAL, NOMEFANTASIA FROM GFILIAL WHERE CODEMPRESA = ? ORDER BY CODFILIAL", (C(eid)["empresa"],))
-        usuarios.gravar_filiais(eid, [{"codigo": l[0], "nome": (l[1] or "").strip()} for l in linhas])
+        try:
+            if eid in _FILIAL_SIMPLES:
+                raise db.ErroBanco("GFILIAL sem os campos de cadastro")
+            # só os campos de cadastro: a GFILIAL também guarda senhas e certificados, que nunca saem do cliente
+            cols, linhas, _ = banco(eid).consultar(
+                "SELECT " + ", ".join(_CAMPOS_FILIAL) + " FROM GFILIAL WHERE CODEMPRESA = ? ORDER BY CODFILIAL",
+                (C(eid)["empresa"],))
+        except db.ErroBanco:      # banco com outra versão da GFILIAL: lê só o básico (e não tenta de novo)
+            _FILIAL_SIMPLES.add(eid)
+            cols, linhas, _ = banco(eid).consultar(
+                "SELECT CODFILIAL, NOMEFANTASIA FROM GFILIAL WHERE CODEMPRESA = ? ORDER BY CODFILIAL", (C(eid)["empresa"],))
+        lista = []
+        for l in linhas:
+            r = {str(c).upper(): ("" if v is None else str(v).strip()) for c, v in zip(cols, l)}
+            f = {"codigo": r.get("CODFILIAL"), "nome": r.get("NOMEFANTASIA") or r.get("NOME") or ""}
+            f.update({k: r[c] for c, k in _CAMPOS_FILIAL_NOMES.items() if c in r})
+            lista.append(f)
+        usuarios.gravar_filiais(eid, lista)
     except (db.ErroBanco, KeyError) as e:
         usuarios.gravar_filiais(eid, None, str(e))
     finally:
@@ -1622,7 +1650,12 @@ def agente_resposta():
         resp = _corpo_json()
     except (ValueError, OSError):
         return jsonify(erro="Resposta inválida."), 400
-    nuvem.agente(eid).responder(resp)          # só os pedidos desta empresa estão na lista dela
+    segundos = nuvem.agente(eid).responder(resp)          # só os pedidos desta empresa estão na lista dela
+    if segundos is not None:
+        try:
+            usuarios.contar_consulta(eid, bool(resp.get("ok")), segundos)
+        except Exception:  # noqa: BLE001 - a contagem é só informativa: nunca atrapalha a resposta
+            app.logger.exception("Falha ao contar a consulta do agente")
     return jsonify(ok=True)
 
 

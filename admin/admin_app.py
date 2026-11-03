@@ -258,6 +258,9 @@ def inicio():
 # ------------------------------------------------------------------ API
 def _empresas_com_estado():
     est = usuarios.estado_agentes()
+    infos = usuarios.info_agentes()
+    consultas = usuarios.consultas_agentes(7)
+    hoje = dt.date.today().isoformat()
     agora = time.time()
     lista = usuarios.listar_empresas()
     for e in lista:
@@ -270,6 +273,17 @@ def _empresas_com_estado():
         e["filiais"] = usuarios._json(a.get("filiais"))
         e["filiais_erro"] = a.get("filiais_erro") or ""
         e["filiais_pedidas"] = a.get("filiais_quando") == 0
+        e["filiais_lidas"] = (dt.datetime.fromtimestamp(a["filiais_quando"]).strftime("%d/%m/%Y %H:%M")
+                              if a.get("filiais_quando") else None)
+        i = infos.get(e["id"]) or {}
+        e["ip"] = a.get("ip") or ""
+        e["agente"] = {
+            "modo": i.get("modo") or "", "codempresa": i.get("codempresa"), "maquina": i.get("maquina") or "",
+            "sistema": i.get("sistema") or "", "sincronizacao": i.get("sincronizacao"),
+            "conectado": dt.datetime.fromtimestamp(i["conectado"]).strftime("%d/%m/%Y %H:%M:%S") if i.get("conectado") else None}
+        dias = consultas.get(e["id"]) or []
+        e["consultas"] = {"hoje": next((d for d in dias if d["dia"] == hoje), None), "dias": dias,
+                          "semana": sum(d["n"] for d in dias)}
     return lista
 
 

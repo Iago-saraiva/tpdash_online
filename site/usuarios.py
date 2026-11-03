@@ -6,6 +6,7 @@ import sqlite3
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import banco_site
 from config import BASE_DIR, DADOS_DIR
 
 CAMINHO = os.path.join(DADOS_DIR, "painel.sqlite")
@@ -30,13 +31,15 @@ empresa_atual = lambda: None   # noqa: E731
 
 
 def _con():
-    os.makedirs(os.path.dirname(CAMINHO), exist_ok=True)
-    con = sqlite3.connect(CAMINHO)
-    con.row_factory = sqlite3.Row
-    return con
+    """SQLite (dados\\painel.sqlite) ou, com DATABASE_URL, PostgreSQL (hospedagem sem disco). Ver banco_site.py."""
+    return banco_site.conectar(CAMINHO)
 
 
 def iniciar(site=False):
+    if banco_site.POSTGRES:
+        banco_site.criar_esquema_pg()
+        _admin_inicial(site)
+        return
     with _con() as con:
         con.executescript("""
         CREATE TABLE IF NOT EXISTS usuarios (
@@ -80,6 +83,11 @@ def iniciar(site=False):
                                 ("consultas", "empresa_id", "TEXT"), ("acessos", "empresa_id", "TEXT")):
             if c not in {r[1] for r in con.execute(f"PRAGMA table_info({tabela})")}:
                 con.execute(f"ALTER TABLE {tabela} ADD COLUMN {c} {tipo}")
+    _admin_inicial(site)
+
+
+def _admin_inicial(site):
+    with _con() as con:
         if con.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 0:
             con.execute(
                 "INSERT INTO usuarios (login, nome, senha_hash, admin, modulos, trocar_senha, super) VALUES (?,?,?,?,?,1,?)",
@@ -479,6 +487,49 @@ def _tabela_agentes(con):
     con.execute("""CREATE TABLE IF NOT EXISTS agentes_estado (
         empresa_id TEXT PRIMARY KEY, visto REAL, versao TEXT, descricao TEXT, ip TEXT,
         filiais TEXT, filiais_quando REAL, filiais_erro TEXT)""")
+    con.execute("CREATE TABLE IF NOT EXISTS agentes_info (empresa_id TEXT PRIMARY KEY, dados TEXT)")
+    con.execute("""CREATE TABLE IF NOT EXISTS agentes_consultas (
+        empresa_id TEXT NOT NULL, dia TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, erros INTEGER NOT NULL DEFAULT 0,
+        segundos REAL NOT NULL DEFAULT 0, PRIMARY KEY (empresa_id, dia))""")
+
+
+def gravar_info_agente(eid, dados):
+    """O que o agente informa ao conectar (modo, código da empresa, computador, sincronização). Sem senhas."""
+    with _con() as con:
+        _tabela_agentes(con)
+        con.execute("INSERT OR IGNORE INTO agentes_info (empresa_id, dados) VALUES (?, '{}')", (eid,))
+        con.execute("UPDATE agentes_info SET dados = ? WHERE empresa_id = ?", (json.dumps(dados, ensure_ascii=False), eid))
+
+
+def contar_consulta(eid, ok, segundos):
+    """Uma consulta feita ao banco da empresa pelo agente: conta por dia, para o TP DASH ADMIN."""
+    import datetime as _dt
+    dia = _dt.date.today().isoformat()
+    with _con() as con:
+        _tabela_agentes(con)
+        con.execute("INSERT OR IGNORE INTO agentes_consultas (empresa_id, dia) VALUES (?, ?)", (eid, dia))
+        con.execute("UPDATE agentes_consultas SET n = n + 1, erros = erros + ?, segundos = segundos + ? "
+                    "WHERE empresa_id = ? AND dia = ?", (0 if ok else 1, float(segundos), eid, dia))
+
+
+def consultas_agentes(dias=7):
+    """{empresa: [{dia, n, erros, segundos}, ...]} dos últimos `dias` dias (o mais novo primeiro)."""
+    import datetime as _dt
+    desde = (_dt.date.today() - _dt.timedelta(days=dias - 1)).isoformat()
+    saida = {}
+    with _con() as con:
+        _tabela_agentes(con)
+        for r in con.execute("SELECT empresa_id, dia, n, erros, segundos FROM agentes_consultas WHERE dia >= ? "
+                             "ORDER BY dia DESC", (desde,)):
+            saida.setdefault(r["empresa_id"], []).append(
+                {"dia": r["dia"], "n": r["n"], "erros": r["erros"], "segundos": round(float(r["segundos"]), 1)})
+    return saida
+
+
+def info_agentes():
+    with _con() as con:
+        _tabela_agentes(con)
+        return {r["empresa_id"]: _json(r["dados"]) or {} for r in con.execute("SELECT empresa_id, dados FROM agentes_info")}
 
 
 def gravar_estado_agente(eid, visto, versao=None, descricao=None, ip=None):

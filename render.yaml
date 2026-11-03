@@ -1,6 +1,6 @@
 # Render Blueprint do TP DASH online (site + TP DASH ADMIN no mesmo serviço).
-# PLANO FREE = SÓ PARA TESTE: sem disco, empresas, usuários e chaves SÃO APAGADOS a cada reinício
-# ou nova versão. Para uso de verdade: plan: starter + o bloco "disk" (ver README).
+# PLANO FREE: o Render não tem disco. Para os dados (empresas, usuários, chaves e a cópia dos bancos)
+# não sumirem a cada reinício, preencha DATABASE_URL com o endereço de um PostgreSQL grátis do Neon (ver README).
 # No Render: New > Blueprint > escolha este repositório. Depois preencha as variáveis marcadas "sync: false".
 services:
   - type: web
@@ -29,4 +29,6 @@ services:
       - key: TPDASH_ADMIN_CAMINHO       # ex.: /adm-7f3k9q2m (use enquanto não tem domínio próprio)
         sync: false
       - key: TPDASH_ADMIN_PERMITIR      # opcional: IP da Tecnoplan, para só ela abrir o ADMIN
+        sync: false
+      - key: DATABASE_URL               # postgresql://... do Neon (vazio = SQLite, que some no plano free)
         sync: false

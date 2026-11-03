@@ -5,3 +5,4 @@ waitress>=3.0
 pandas>=2.1
 openpyxl>=3.1
 reportlab>=4.0
+psycopg[binary]>=3.2      # PostgreSQL (Neon), usado quando existe a variável DATABASE_URL

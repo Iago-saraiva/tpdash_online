@@ -50,7 +50,7 @@ export default function TabelaEmpresas({ empresas, usuarios, escolhida, carregad
                   <td>{e.ativa ? "Ativa" : "Desativada"}</td>
                   <td>
                     <span className={"tag " + (e.online ? "entrada" : "")}>{e.online ? "Conectado" : e.tem_chave ? "Desconectado" : "Sem chave"}</span><br />
-                    <span className="nota">{e.visto ? `último contato ${e.visto}` : "nunca conectou"}</span>
+                    <span className="nota">{e.visto ? `último contato ${e.visto}` : "nunca conectou"}{e.versao ? ` · versão ${e.versao}` : ""}</span>
                   </td>
                   <td>{f ? (f.length === 1 ? "1 filial" : f.length ? `${f.length} filiais` : "nenhuma") : "—"}</td>
                   <td>{usuarios.filter((u) => u.empresa_id === e.id).length}</td>

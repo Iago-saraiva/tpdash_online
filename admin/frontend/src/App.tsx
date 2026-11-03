@@ -4,7 +4,7 @@ import type { Aviso, Empresa, Modulos, Usuario } from "./tipos";
 import Resumo from "./componentes/Resumo";
 import TabelaEmpresas from "./componentes/TabelaEmpresas";
 import NovaEmpresa from "./componentes/NovaEmpresa";
-import Filiais from "./componentes/Filiais";
+import FichaEmpresa from "./componentes/FichaEmpresa";
 import TabelaUsuarios from "./componentes/TabelaUsuarios";
 import FormUsuario from "./componentes/FormUsuario";
 import Avisos from "./componentes/Avisos";
@@ -91,10 +91,12 @@ export default function App() {
         <div className="cartao c4" style={{ alignSelf: "start" }}>
           <NovaEmpresa agir={agir} onCriada={(id, nome, chave) => { setEscolhida(id); if (chave) setChaveNova({ nome, chave }); }} />
         </div>
-        <div className="cartao c4" style={{ alignSelf: "start" }}>
-          <Filiais empresa={empresa} agir={agir} />
-        </div>
-        <div className="cartao c8" style={{ alignSelf: "start" }}>
+        {empresa && (
+          <div className="cartao c12">
+            <FichaEmpresa empresa={empresa} agir={agir} />
+          </div>
+        )}
+        <div className="cartao c12" style={{ alignSelf: "start" }}>
           <TabelaUsuarios
             usuarios={usuarios} empresas={empresas} filtro={escolhida} onFiltro={setEscolhida}
             onNovo={() => setEditando(null)} onEditar={(u) => setEditando(u)} agir={agir}

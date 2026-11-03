@@ -2,7 +2,7 @@
 
 Painel web do Puma para várias empresas clientes. Cada empresa instala o **TP DASH Agente** no servidor dela;
 o agente se conecta ao site (de dentro para fora) e executa as consultas no banco Firebird da empresa.
-O site nunca acessa o banco diretamente e nenhum dado das empresas fica guardado nele.
+O site nunca acessa o banco diretamente.
 
 | Pasta | O que é |
 |---|---|
@@ -23,12 +23,22 @@ O site nunca acessa o banco diretamente e nenhum dado das empresas fica guardado
      (ex.: `/adm-` seguido de 10 letras e números). O ADMIN fica em `https://<serviço>.onrender.com/<caminho>`.
    - `TPDASH_ADMIN_HOST`: deixe vazio até ter domínio (veja abaixo).
    - `TPDASH_ADMIN_PERMITIR` (opcional): IP fixo da Tecnoplan, para só ela abrir o ADMIN.
-3. Confirme o plano **Starter** com o disco de 1 GB (o plano grátis não tem disco e apaga os dados).
+3. No plano grátis (sem disco), preencha `DATABASE_URL` com o banco do Neon (abaixo). Sem ele, os dados
+   somem a cada reinício.
 4. Primeiro acesso no ADMIN: usuário `admin`, senha `admin`. **Troque a senha na hora.**
 5. No ADMIN, cadastre as empresas, gere as chaves e os usuários. No TP DASH Agente de cada cliente,
    coloque o endereço `https://<serviço>.onrender.com` e a chave da empresa.
 
 Atualizar: envie as mudanças para o GitHub (commit + push). O Render publica sozinho e os dados do disco continuam.
+
+### Banco PostgreSQL grátis (Neon)
+
+1. Crie uma conta em neon.tech e um projeto (região **AWS US East (N. Virginia)**, a mesma do Render).
+2. Em **Connect**, copie a *connection string* (começa com `postgresql://` e termina com `?sslmode=require`).
+3. No Render, em **Environment**, crie `DATABASE_URL` com esse valor e salve. O site cria as tabelas sozinho.
+
+Com `DATABASE_URL` preenchida, o site guarda tudo no Neon (empresas, usuários, chaves, estado dos agentes).
+Sem ela, usa o SQLite em `TPDASH_DADOS`. O endereço do Neon tem senha: nunca o coloque no GitHub.
 
 ### Com domínio próprio (recomendado)
 
@@ -46,6 +56,7 @@ Depois coloque `TPDASH_ADMIN_HOST=admin.seudominio.com.br` e apague `TPDASH_ADMI
 | `TPDASH_ADMIN_HOST` / `TPDASH_ADMIN_CAMINHO` | Endereço do ADMIN (um dos dois; sem nenhum, o ADMIN fica desligado). |
 | `TPDASH_ADMIN_PERMITIR`, `TPDASH_PERMITIR` | IPs que podem abrir o ADMIN / o site (vazio = todos). |
 | `TPDASH_NOME` | Nome no login do site. |
+| `DATABASE_URL` | PostgreSQL (Neon). Vazio = SQLite na pasta `TPDASH_DADOS`. |
 
 ## Rodar localmente (teste)
 

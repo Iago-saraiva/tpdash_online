@@ -1,4 +1,21 @@
-export interface Filial { codigo: number | string; nome: string }
+export interface Filial {
+  codigo: number | string; nome: string;
+  razao?: string; cnpj?: string; ie?: string; im?: string; telefone?: string; email?: string;
+  rua?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; uf?: string; cep?: string;
+  contato?: string; inativo?: string;
+}
+
+export interface Sincronizacao {
+  intervalo_min?: number; ultima?: string; proxima?: string; duracao_s?: number;
+  inseridas?: number; alteradas?: number; apagadas?: number; carga_inicial?: string; erro?: string;
+}
+
+export interface InfoAgente {
+  modo: string; codempresa: number | string | null; maquina: string; sistema: string;
+  sincronizacao: Sincronizacao | null; conectado: string | null;
+}
+
+export interface ConsultasDia { dia: string; n: number; erros: number; segundos: number }
 
 export interface Empresa {
   id: string;
@@ -13,6 +30,10 @@ export interface Empresa {
   filiais: Filial[] | null;
   filiais_erro: string;
   filiais_pedidas: boolean;
+  filiais_lidas: string | null;
+  ip: string;
+  agente: InfoAgente;
+  consultas: { hoje: ConsultasDia | null; dias: ConsultasDia[]; semana: number };
 }
 
 export interface Usuario {
