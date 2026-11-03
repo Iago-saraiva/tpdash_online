@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trocar senha · TP DASH</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}"></head>
+<body class="login-pag">
+<form class="login-box" method="post">
+  <h1>Defina sua senha</h1>
+  <p>Escolha uma senha pessoal com pelo menos 6 caracteres (letras, números ou os dois).</p>
+  {% if erro %}<div class="aviso erro">{{ erro }}</div>{% endif %}
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>Senha atual<input name="atual" type="password" autocomplete="current-password" required></label>
+  <label>Nova senha<input name="nova" type="password" autocomplete="new-password" minlength="6" required></label>
+  <label>Confirme a nova senha<input name="confirma" type="password" autocomplete="new-password" minlength="6" required></label>
+  <button class="btn primario">Salvar e entrar</button>
+  <a href="/sair" style="text-align:center;font-size:13px">Sair</a>
+</form>
+</body></html>

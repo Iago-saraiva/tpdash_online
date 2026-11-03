@@ -1,0 +1,7 @@
+# TP DASH online hospedado (Render): só o que o site e o ADMIN usam.
+# (O agente e o painel local têm os próprios requirements.)
+flask>=3.0
+waitress>=3.0
+pandas>=2.1
+openpyxl>=3.1
+reportlab>=4.0

@@ -1,0 +1,31 @@
+# ---- NUNCA vão para o GitHub: senhas, chaves e dados das empresas ----
+config.ini
+admin.ini
+agente.ini
+*.sqlite
+*.sqlite-*
+*.dat
+*.token
+*.pem
+*.cer
+*.key
+dados/
+**/dados/
+
+# ---- cópias de segurança, pacotes e arquivos gerados ----
+backup_*/
+**/backup_*/
+agente/distribuir/
+agente/pacote/
+agente/build/
+agente/dist/
+*.spec
+*.exe
+*.zip
+*.rar
+*.7z
+*.log
+__pycache__/
+*.pyc
+.venv/
+venv/

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<form class="filtros" id="filtros" autocomplete="off">
+  <label>De<input type="date" name="ini"></label>
+  <label>Até<input type="date" name="fim"></label>
+  <div class="presets"></div>
+  <label>Máquina<select name="maquina" class="largo" data-auto></select></label>
+  <label>Grupo<select name="grupo" data-auto></select></label>
+  <label>Filial<select name="filial" data-auto></select></label>
+  <label>Busca<input name="busca" placeholder="placa, código ou nome"></label>
+  <div class="acoes"><button type="button" class="btn" id="limpar">Limpar</button><button class="btn primario">Aplicar</button></div>
+</form>
+<p class="nota">Abastecimentos pelo movimento 1.2.40 (combustível/lubrificante) e manutenções pelo 1.2.39, ligados à máquina informada no movimento. Cancelados não entram.</p>
+<div class="kpis" id="kpis"></div>
+<div class="grade">
+  <div class="cartao c8"><div class="cartao-cab"><h2>Gasto por mês</h2></div><div id="g-mes"></div></div>
+  <div class="cartao c4"><div class="cartao-cab"><h2>Combustível por produto</h2></div><div id="g-prod"></div></div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>10 máquinas com maior gasto <span class="sub">· clique para ver os lançamentos</span></h2></div><div id="g-top"></div></div>
+  <div class="cartao c12">
+    <div class="abas" id="abas-frota"><button type="button" data-aba="maquinas" class="ativa">Por máquina</button><button type="button" data-aba="lancamentos">Lançamentos</button></div>
+    <div id="sec-maquinas">
+      <div class="cartao-cab"><h2><span class="sub">clique em uma máquina para ver os lançamentos dela</span></h2>
+        <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+      <div id="tabela-maq"></div>
+    </div>
+    <div id="sec-lancamentos" hidden>
+      <div class="cartao-cab"><h2><span class="sub">abastecimentos e manutenções, do mais recente para o mais antigo</span></h2>
+        <button class="btn pequeno" data-exp-lanc="xlsx">Excel</button><button class="btn pequeno" data-exp-lanc="pdf">PDF</button></div>
+      <div id="tabela-lanc"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

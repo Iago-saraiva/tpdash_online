@@ -1,0 +1,21 @@
+TP DASH ADMIN
+=============
+Site separado, só da Tecnoplan, para:
+  - cadastrar empresas clientes e gerar/bloquear a chave do agente de cada uma;
+  - ver se o agente de cada empresa está conectado e as filiais de cada empresa (lidas do Puma);
+  - cadastrar, editar, mudar de empresa e desativar os usuários de todas as empresas.
+
+Ele NÃO aparece no menu do TP DASH. Tem endereço e login próprios:
+  - teste local: http://localhost:8071 (iniciar com 4_iniciar_admin.bat);
+  - hospedado: use um endereço separado, ex.: https://admin.seudominio.com.br, de preferência
+    liberado só para o IP da Tecnoplan (permitir = ... no admin.ini).
+
+Login: o usuário administrador da Tecnoplan do TP DASH online (o "admin"). Usuários das empresas
+clientes não entram aqui. 5 senhas erradas seguidas bloqueiam o login por 5 minutos.
+
+Como funciona:
+  - Usa o mesmo banco de empresas e usuários do site (site\dados\painel.sqlite).
+  - O site TP DASH online grava no banco o estado de cada agente e lê as filiais da empresa
+    (tabela GFILIAL do Puma) quando o agente conecta e a cada 30 minutos. O botão "Ler de novo"
+    pede uma leitura nova, feita em até uns 30 segundos.
+  - admin.ini é criado sozinho na primeira execução (porta 8071 e chave própria do login).

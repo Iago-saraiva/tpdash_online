@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="abas" id="abas-mov"><button type="button" data-aba="estoque">Mexe com estoque</button><button type="button" data-aba="sem">Não mexe com estoque</button></div>
+<div class="secao">
+<form class="filtros" id="filtros" autocomplete="off">
+  <input type="hidden" name="aba" value="estoque">
+  <label>De<input type="date" name="ini"></label>
+  <label>Até<input type="date" name="fim"></label>
+  <div class="presets"></div>
+  <label>Filial<select name="filial" data-auto></select></label>
+  <label>Grupo<select name="grupo" class="largo" data-auto></select></label>
+  <label>Produto<input name="busca" placeholder="código ou nome" class="largo"></label>
+  <label class="check"><input type="checkbox" name="com_mov" value="1" data-auto> só produtos com movimento</label>
+  <label class="check"><input type="checkbox" name="inativos" value="1" data-auto> incluir inativos</label>
+  <div class="acoes"><button type="button" class="btn" id="limpar">Limpar</button><button class="btn primario">Aplicar</button></div>
+</form>
+<p class="nota" id="nota-aba"></p>
+<div class="kpis" id="kpis"></div>
+<div class="grade">
+  <div class="cartao c12"><div class="cartao-cab"><h2>Produtos <span class="sub">· clique em um produto para ver os movimentos</span></h2>
+    <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+    <div id="tabela"></div></div>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<p class="nota linha-filial" style="margin:0 0 10px">Período: <strong id="mes-atual"></strong>
+  <label class="filial-inicio">Filial <select id="filial-inicio" class="campo" aria-label="Filial"><option value="">Todas</option></select></label></p>
+<div class="alertas" id="alertas"><span class="alerta esqueleto">&nbsp;</span><span class="alerta esqueleto">&nbsp;</span></div>
+<div class="kpis" id="kpis"><div class="kpi esqueleto"></div><div class="kpi esqueleto"></div><div class="kpi esqueleto"></div><div class="kpi esqueleto"></div><div class="kpi esqueleto"></div></div>
+<div class="grade">
+  <div class="cartao c7"><div class="cartao-cab"><h2>Movimentações por funcionário <span class="sub">· quantidade no período, sem cancelados · clique para abrir</span></h2></div><div id="g-movfunc" class="g-esqueleto"></div></div>
+  <div class="cartao c5"><div class="cartao-cab"><h2>Movimentos por <span id="rot-movtipo">categoria</span> <span class="sub">· quantidade no período, clique para abrir</span></h2>
+    <select id="modo-movtipo" class="campo" style="min-width:auto;height:28px" aria-label="Agrupar movimentos por"><option value="cat">Categoria</option><option value="tipo">Tipo</option></select></div>
+    <div id="g-movtipo" class="g-esqueleto"></div></div>
+  <div class="cartao c7"><div class="cartao-cab"><h2>Contas a pagar e a receber por <span id="rot-semanas">semana</span> <span class="sub">· títulos em aberto no período · clique para abrir</span></h2></div><div id="g-pagrec" class="g-esqueleto"></div><div id="saldo-semanas" class="saldo-semanas"></div></div>
+  <div class="cartao c5"><div class="cartao-cab"><h2>Atraso dos títulos em aberto <span class="sub">· todos os vencimentos · clique para abrir</span></h2></div><div id="g-aging" class="g-esqueleto"></div></div>
+</div>
+{% endblock %}

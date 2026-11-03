@@ -1,0 +1,23 @@
+TP DASH ONLINE - TESTE LOCAL (sem hospedagem)
+=============================================
+Esta pasta nao altera o painel atual. O site de teste usa a porta 8070
+e um cadastro de usuarios proprio (site\dados).
+
+1. De dois cliques em 1_iniciar_site.bat. O navegador abre http://localhost:8070.
+   Entre com admin / admin e troque a senha. Este e o usuario da Tecnoplan.
+
+2. Em "Empresas":
+   - cadastre a empresa (ex.: identificador "metodo", nome "Metodo Construcoes Eletricas");
+   - clique em "Gerar chave" e copie a chave (ela aparece uma vez so);
+   - crie o administrador da empresa (login, nome e senha inicial).
+
+3. Abra agente\config.ini no Bloco de Notas, cole a chave na linha "chave =" e salve.
+
+4. Clique com o botao direito em 2_iniciar_agente.bat > "Executar como administrador".
+   A janela deve mostrar "Conectado ao site como ...".
+
+5. No site, a empresa aparece como "Conectado". Saia e entre com o administrador
+   da empresa: ele ve so os dados dessa empresa.
+
+Para parar o teste, feche as duas janelas pretas.
+O agente le o banco pelo config.ini do painel, em modo somente leitura.

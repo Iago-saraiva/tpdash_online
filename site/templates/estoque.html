@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<form class="filtros" id="filtros" autocomplete="off">
+  <label>Filial<select name="filial" data-auto></select></label>
+  <label>Local<select name="local" class="largo" data-auto></select></label>
+  <label>Grupo<select name="grupo" class="largo" data-auto></select></label>
+  <label>Produto<input name="busca" placeholder="código ou nome" class="largo"></label>
+  <label class="check"><input type="checkbox" name="negativos" value="1" data-auto> só saldos negativos</label>
+  <div class="acoes"><button type="button" class="btn" id="limpar">Limpar</button><button class="btn primario">Aplicar</button></div>
+</form>
+<div class="kpis" id="kpis"></div>
+<div class="grade">
+  <div class="cartao c6"><div class="cartao-cab"><h2><span class="tit-modo" data-v="Valor por local" data-q="Quantidade por local">Valor por local</span> <span class="sub">· clique para filtrar</span></h2><div class="alterna" role="group" aria-label="Mostrar" data-alterna="local"><button type="button" class="ativo" data-modo="valor">Valor</button><button type="button" data-modo="qtd">Quantidade</button></div></div><div id="g-local"></div></div>
+  <div class="cartao c6"><div class="cartao-cab"><h2><span class="tit-modo" data-v="Valor por grupo" data-q="Quantidade por grupo">Valor por grupo</span></h2><div class="alterna" role="group" aria-label="Mostrar" data-alterna="grupo"><button type="button" class="ativo" data-modo="valor">Valor</button><button type="button" data-modo="qtd">Quantidade</button></div></div><div id="g-grupo"></div></div>
+  <div class="cartao c12 clicavel" id="cartao-top" tabindex="0" role="button" title="Clique para ver quantidade e preço de venda de cada produto"><div class="cartao-cab"><h2><span class="tit-modo" data-v="Produtos de maior valor em estoque" data-q="Produtos com maior quantidade em estoque">Produtos de maior valor em estoque</span> <span class="sub">· clique para ver quantidade e preço de venda</span></h2><div class="alterna" role="group" aria-label="Mostrar" data-alterna="top"><button type="button" class="ativo" data-modo="valor">Valor</button><button type="button" data-modo="qtd">Quantidade</button></div></div><div id="g-top"></div></div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>Saldo por produto e local</h2>
+    <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+    <div id="tabela"></div></div>
+</div>
+{% endblock %}

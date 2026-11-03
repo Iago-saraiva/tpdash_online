@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<form class="filtros" id="filtros" autocomplete="off">
+  <label>De<input type="date" name="ini"></label>
+  <label>Até<input type="date" name="fim"></label>
+  <div class="presets"></div>
+  <label>Tipo de movimento<select name="tipos" class="largo"></select></label>
+  <label>Tipo inicia com<input name="prefixo" placeholder="ex.: 2.2" style="min-width:90px;width:100px"></label>
+  <label>Vendedor / funcionário<select name="vendedor" class="largo"></select></label>
+  <label>Cliente<input name="cliente" placeholder="código ou nome"></label>
+  <div class="filtro-rot"><span>Centro de custo</span><input type="hidden" name="ccusto"></div>
+  <div class="filtro-rot"><span>Departamento</span><input type="hidden" name="depto"></div>
+  <label>Filial<select name="filial" data-auto></select></label>
+  <label>Cancelados<select name="cancelados" data-auto><option value="">Sem cancelados</option><option value="1">Incluir cancelados</option><option value="so">Apenas cancelados</option></select></label>
+  <div class="acoes">
+    <button type="button" class="btn" id="limpar">Limpar</button>
+    <button class="btn primario">Aplicar</button>
+  </div>
+</form>
+<div class="kpis" id="kpis"></div>
+<div class="grade">
+  <div class="cartao c8"><div class="cartao-cab"><h2>Por mês</h2>
+    <select id="metrica-mes" class="campo" style="min-width:auto;height:28px"><option value="valor">Valor líquido</option><option value="qtd">Quantidade</option></select></div>
+    <div id="g-mes"></div></div>
+  <div class="cartao c4"><div class="cartao-cab"><h2>Por <span id="rot-tipo">categoria</span> <span class="sub">· quantidade, clique para filtrar</span></h2>
+    <select id="modo-tipo" class="campo" style="min-width:auto;height:28px" aria-label="Agrupar por"><option value="cat">Categoria</option><option value="tipo">Tipo</option></select></div><div id="g-tipo"></div></div>
+  <div class="cartao c6"><div class="cartao-cab"><h2>10 maiores clientes <span class="sub">· valor, clique para filtrar</span></h2></div><div id="g-cli"></div></div>
+  <div class="cartao c6"><div class="cartao-cab"><h2>Por vendedor / funcionário <span class="sub">· 10 maiores, valor</span></h2></div><div id="g-vend"></div></div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>Documentos <span class="sub">· clique em uma linha para ver os materiais</span></h2>
+    <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+    <div id="tabela"></div></div>
+</div>
+{% endblock %}

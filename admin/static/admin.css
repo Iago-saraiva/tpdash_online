@@ -1,0 +1,13 @@
+/* TP DASH ADMIN: usa o visual do TP DASH (app.css) com uma barra própria no topo. */
+.adm-topo { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: var(--lateral); color: var(--lateral-texto); position: sticky; top: 0; z-index: 5; }
+.adm-topo h1 { font-size: 17px; margin: 0; letter-spacing: .5px; color: #fff; }
+.adm-topo .selo { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #b8452f; color: #fff; }
+.adm-topo .esp { flex: 1; }
+.adm-topo a { color: var(--lateral-texto); }
+.adm-topo .quem { font-size: 13px; opacity: .9; }
+.adm-login .login-box h1 { letter-spacing: .5px; }
+.adm-acoes { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; min-width: 150px; }
+.adm-campo { display: flex; flex-direction: column; gap: 4px; }
+#tabela-empresas tbody tr { cursor: pointer; }
+#tabela-empresas tbody tr.escolhida { background: var(--superficie-2); }
+@media (max-width: 900px) { .adm-topo { padding: 10px 16px; flex-wrap: wrap; } .conteudo { padding: 16px; } .grade > .cartao { grid-column: span 12 !important; } }

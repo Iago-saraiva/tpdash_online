@@ -1,0 +1,8 @@
+flask>=3.0
+waitress>=3.0
+firebird-driver>=1.10
+pandas>=2.1
+openpyxl>=3.1
+reportlab>=4.0
+cryptography>=41
+pystray>=0.19

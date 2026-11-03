@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entrar · TP DASH</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#13253d">
+  <link rel="apple-touch-icon" href="/static/icone-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TP DASH">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script src="{{ url_for('static', filename='cabeca.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body class="login-pag">
+<form class="login-box" method="post">
+  <img src="{{ url_for('static', filename='logo-tpdash-preto.svg') }}" width="48" height="48" alt="TP DASH" class="logo-tpdash">
+  <h1>TP DASH</h1>
+  {% if not bancos %}<p>{{ empresa }}</p>{% endif %}
+  {% if erro %}<div class="aviso erro">{{ erro }}</div>{% endif %}
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if bancos %}
+  <label>Empresa<select name="banco" class="sel-empresa">
+    {% for b in bancos %}<option value="{{ b.id }}"{% if b.id == banco_sel %} selected{% endif %}>{{ b.nome }}</option>{% endfor %}
+  </select></label>
+  {% endif %}
+  <label>Login<input name="login" autofocus autocomplete="username" required></label>
+  <label>Senha<input name="senha" type="password" autocomplete="current-password" required></label>
+  {% if lembrar %}<label class="check lembrar"><input type="checkbox" name="lembrar" value="1"> Manter conectado neste aparelho</label>{% endif %}
+  <button class="btn primario">Entrar</button>
+  <a class="link-instalar" href="/instalar">Instalar o app no celular ou no computador</a>
+</form>
+</body></html>

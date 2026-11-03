@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "TP DASH",
+  "short_name": "TP DASH",
+  "description": "Dashboard e relatórios com dados do Puma",
+  "start_url": "/?origem=app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#13253d",
+  "theme_color": "#13253d",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {"src": "/static/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icone-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/static/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Movimentos", "url": "/movimentos", "icons": [{"src": "/static/icone-192.png", "sizes": "192x192"}]},
+    {"name": "Financeiro", "url": "/financeiro", "icons": [{"src": "/static/icone-192.png", "sizes": "192x192"}]},
+    {"name": "Estoque", "url": "/estoque", "icons": [{"src": "/static/icone-192.png", "sizes": "192x192"}]},
+    {"name": "Relatórios", "url": "/relatorios", "icons": [{"src": "/static/icone-192.png", "sizes": "192x192"}]}
+  ],
+  "screenshots": [
+    {"src": "/static/tela-celular.png", "sizes": "780x1688", "type": "image/png", "form_factor": "narrow", "label": "Painel no celular"},
+    {"src": "/static/tela-pc.png", "sizes": "1440x900", "type": "image/png", "form_factor": "wide", "label": "Painel no computador"}
+  ]
+}

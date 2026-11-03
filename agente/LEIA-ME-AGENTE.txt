@@ -1,0 +1,27 @@
+TP DASH AGENTE - INSTALAR NO SERVIDOR DO CLIENTE
+================================================
+O agente le o banco do Puma (somente leitura) e responde as consultas do site
+TP DASH online. Ele abre a conexao de dentro para fora: nao precisa abrir
+porta no roteador nem VPN. Nao precisa instalar Python.
+
+1. Copie esta pasta para o servidor onde esta o banco do Puma,
+   ex.: C:\TPDashAgente
+2. No site, em Empresas, cadastre a empresa e clique em "Gerar chave".
+3. Abra o TPDashAgente.exe (o Windows pede permissao de administrador).
+   No primeiro uso, crie o login e a senha do agente.
+4. Informe o endereco do site e, em "Adicionar", a chave da empresa e o
+   banco do Puma (servidor, arquivo, usuario e senha). Use "Testar".
+   Mais de uma empresa no mesmo servidor: "Adicionar" de novo.
+5. Clique em "Salvar e iniciar". O agente passa a rodar sozinho com o
+   Windows, sem janela. A janela serve so para configurar e acompanhar.
+
+Onde ficam os dados: dados\agente.dat, cifrado pelo Windows. Copiado para
+outro computador ele nao abre, e so administradores conseguem ler a pasta.
+Nao existe config.ini.
+
+Esqueceu a senha do agente? Um administrador do Windows apaga o arquivo
+dados\agente.dat e configura de novo pela janela.
+
+Registro de funcionamento: botao "Ver registro" (arquivo dados\agente.log).
+Conferir o arquivo: o HASH-SHA256.txt tem a "impressao digital" do
+TPDashAgente.exe gerado pela Tecnoplan.

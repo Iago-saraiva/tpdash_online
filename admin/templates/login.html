@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Entrar · TP DASH ADMIN</title>
+<link rel="icon" href="{{ base() }}/favicon.ico">
+<link rel="stylesheet" href="{{ base() }}/static/app.css"><link rel="stylesheet" href="{{ base() }}/static/admin.css"></head>
+<body class="login-pag adm-login">
+<form class="login-box" method="post">
+  <img src="{{ base() }}/static/logo-tpdash-preto.svg" width="48" height="48" alt="TP DASH" class="logo-tpdash">
+  <h1>TP DASH ADMIN</h1>
+  <p>Área restrita da Tecnoplan</p>
+  {% if erro %}<div class="aviso erro">{{ erro }}</div>{% endif %}
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>Login<input name="login" autofocus autocomplete="username" required></label>
+  <label>Senha<input name="senha" type="password" autocomplete="current-password" required></label>
+  <button class="btn primario">Entrar</button>
+</form>
+</body></html>

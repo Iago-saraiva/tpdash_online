@@ -1,0 +1,12 @@
+; config.ini do SITE (servidor na nuvem). Não tem dados de banco: os dados vêm dos agentes.
+[servidor]
+host = 127.0.0.1
+porta = 8050
+nome_empresa = TP DASH
+limite_linhas = 5000
+
+[nuvem]
+site = sim
+; o nginx faz o HTTPS na frente
+atras_de_proxy = sim
+cookie_seguro = sim

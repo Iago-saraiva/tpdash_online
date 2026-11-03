@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="abas"><button data-aba="clientes">Clientes e fornecedores</button><button data-aba="produtos">Produtos e tributação</button><button data-aba="maquinas">Máquinas</button></div>
+<div id="sec-clientes" class="secao" hidden>
+  <form class="filtros" id="filtros-cli" autocomplete="off">
+    <label>Mostrar<select name="tipo" data-auto><option value="clientes">Clientes</option><option value="fornecedores">Fornecedores</option><option value="todos">Todos</option></select></label>
+    <label>Situação<select name="ativo" data-auto><option value="">Todos</option><option value="T">Ativos</option><option value="F">Inativos</option></select></label>
+    <label>UF<input name="uf" maxlength="2" style="min-width:60px;width:70px"></label>
+    <label>Busca<input name="busca" placeholder="código, nome, CNPJ ou cidade" class="largo"></label>
+    <label class="check"><input type="checkbox" name="acima_limite" value="1" data-auto> só acima do limite de crédito</label>
+    <div class="acoes"><button type="button" class="btn" id="limpar-cli">Limpar</button><button class="btn primario">Aplicar</button></div>
+  </form>
+  <div class="kpis" id="kpis-cli"></div>
+  <div class="grade">
+    <div class="cartao c8"><div class="cartao-cab"><h2>12 cidades com mais cadastros</h2></div><div id="g-cidade"></div></div>
+    <div class="cartao c4"><div class="cartao-cab"><h2>Pessoa física × jurídica</h2></div><div id="g-pessoa"></div></div>
+    <div class="cartao c12"><div class="cartao-cab"><h2>Cadastros</h2>
+      <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+      <div id="tabela-cli"></div></div>
+  </div>
+</div>
+<div id="sec-produtos" class="secao" hidden>
+  <form class="filtros" id="filtros-prod" autocomplete="off">
+    <label>Grupo<select name="grupo" class="largo" data-auto></select></label>
+    <label>Busca<input name="busca" placeholder="código, NCM ou nome" class="largo"></label>
+    <label>Alerta<select name="alerta" data-auto><option value="">Todos os produtos</option><option>Sem situação tributária</option><option>Sem NCM</option><option>ST sem CEST</option><option>Sem preço</option><option>Saldo negativo</option><option value="Inativos">Apenas inativos</option></select></label>
+    <label class="check"><input type="checkbox" name="inativos" value="1" data-auto> incluir inativos</label>
+    <div class="acoes"><button type="button" class="btn" id="limpar-prod">Limpar</button><button class="btn primario">Aplicar</button></div>
+  </form>
+  <div class="kpis" id="kpis-prod"></div>
+  <div class="grade">
+    <div class="cartao c6"><div class="cartao-cab"><h2>Por situação tributária</h2></div><div id="g-sit"></div></div>
+    <div class="cartao c6"><div class="cartao-cab"><h2>Alertas de cadastro <span class="sub">· clique para filtrar</span></h2></div><div id="g-alertas"></div></div>
+    <div class="cartao c12"><div class="cartao-cab"><h2>Produtos <span class="sub">· do código mais recente para o mais antigo</span></h2>
+      <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+      <div id="tabela-prod"></div></div>
+  </div>
+</div>
+<div id="sec-maquinas" class="secao" hidden>
+  <form class="filtros" id="filtros-maq" autocomplete="off">
+    <label>Grupo<select name="grupo" class="largo" data-auto></select></label>
+    <label>Filial<select name="filial" data-auto></select></label>
+    <label>Situação<select name="situacao" data-auto><option value="">Todas</option><option value="ativas">Ativas</option><option value="inativas">Inativas</option></select></label>
+    <label>Busca<input name="busca" placeholder="código, placa, nome, marca, chassi ou motor" class="largo"></label>
+    <div class="acoes"><button type="button" class="btn" id="limpar-maq">Limpar</button><button class="btn primario">Aplicar</button></div>
+  </form>
+  <div class="kpis" id="kpis-maq"></div>
+  <div class="grade">
+    <div class="cartao c6"><div class="cartao-cab"><h2>Por grupo <span class="sub">· clique para filtrar</span></h2></div><div id="g-maq-grupo"></div></div>
+    <div class="cartao c6"><div class="cartao-cab"><h2>Por marca</h2></div><div id="g-maq-marca"></div></div>
+    <div class="cartao c12"><div class="cartao-cab"><h2>Máquinas e veículos <span class="sub">· clique para ver a ficha completa</span></h2>
+      <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+      <div id="tabela-maq"></div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<form class="filtros" id="filtros" autocomplete="off">
+  <label>Tipo<select name="tipo" data-auto><option value="R">A receber</option><option value="P">A pagar</option><option value="T">Ambos</option></select></label>
+  <label>Situação<select name="status" data-auto><option value="A">Em aberto</option><option value="B">Baixados</option><option value="C">Cancelados</option><option value="*">Todos</option></select></label>
+  <label>Data base<select name="base"><option value="vencimento">Vencimento</option><option value="emissao">Emissão</option><option value="baixa">Baixa</option></select></label>
+  <label>De<input type="date" name="ini"></label>
+  <label>Até<input type="date" name="fim"></label>
+  <div class="presets"></div>
+  <div class="filtro-rot"><span>Tipo de documento</span><input type="hidden" name="tipodoc"></div>
+  <div class="filtro-rot"><span>Centro de custo</span><input type="hidden" name="ccusto"></div>
+  <div class="filtro-rot"><span>Departamento</span><input type="hidden" name="depto"></div>
+  <label>Cliente / fornecedor<input name="cliente" placeholder="código ou nome" class="largo"></label>
+  <label>Filial<select name="filial" data-auto></select></label>
+  <div class="acoes"><button type="button" class="btn" id="limpar">Limpar</button><button class="btn primario">Aplicar</button></div>
+</form>
+<div class="kpis" id="kpis"></div>
+<div class="grade">
+  <div class="cartao c8"><div class="cartao-cab"><h2>Por mês <span class="sub">· conforme a data base escolhida</span></h2></div><div id="g-mes"></div></div>
+  <div class="cartao c4"><div class="cartao-cab"><h2>Em aberto por atraso</h2></div><div id="g-aging"></div></div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>10 maiores clientes / fornecedores <span class="sub">· clique para filtrar</span></h2></div><div id="g-nomes"></div></div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>Títulos</h2>
+    <button class="btn pequeno" data-exportar="xlsx">Excel</button><button class="btn pequeno" data-exportar="pdf">PDF</button></div>
+    <div id="tabela"></div></div>
+</div>
+{% endblock %}

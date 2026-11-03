@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<form class="filtros" id="filtros" autocomplete="off">
+  <label>De<input type="date" name="ini"></label>
+  <label>Até<input type="date" name="fim"></label>
+  <div class="presets"></div>
+  <label>Tipo de movimento<select name="tipos" class="largo"></select></label>
+  <label>Tipo inicia com<input name="prefixo" placeholder="ex.: 2.2" style="min-width:90px;width:100px"></label>
+  <label>Vendedor / funcionário<select name="vendedor" class="largo"></select></label>
+  <label>Cliente / fornecedor<input name="cliente" placeholder="código ou nome"></label>
+  <label>Local de estoque<select name="local"></select></label>
+  <label>Filial<select name="filial"></select></label>
+</form>
+<div class="cartao">
+  <div class="cartao-cab"><h2>Relatórios prontos <span class="sub">· usam os filtros acima quando se aplicam</span></h2></div>
+  <div class="lista-rel">
+    {% if 'movimentos' in usuario.modulos %}
+    <div class="rel"><h3>Movimentos documento por documento</h3>
+      <p>Cada DOCUMENTO com data, cliente e valor, seguido dos materiais (código, quantidade, unitário, total). No fim, resumo por material. Filtros: período, tipo, vendedor, cliente.</p>
+      <div class="acoes"><button class="btn pequeno primario" data-rel="documentos" data-formato="pdf">PDF</button><button class="btn pequeno" data-rel="documentos" data-formato="xlsx">Excel</button></div></div>
+    {% endif %}
+    {% if 'financeiro' in usuario.modulos %}
+    <div class="rel"><h3>Títulos em aberto</h3>
+      <p>Contas a pagar e a receber em aberto com vencimento no período, dias de atraso e valor. Filtros: período (vencimento), cliente/fornecedor.</p>
+      <div class="acoes"><button class="btn pequeno primario" data-rel="titulos" data-formato="pdf">PDF</button><button class="btn pequeno" data-rel="titulos" data-formato="xlsx">Excel</button></div></div>
+    {% endif %}
+    {% if 'estoque' in usuario.modulos %}
+    <div class="rel"><h3>Saldo de estoque por local</h3>
+      <p>Produtos com saldo diferente de zero, custo médio e valor em estoque. Filtro: local de estoque.</p>
+      <div class="acoes"><button class="btn pequeno primario" data-rel="estoque" data-formato="pdf">PDF</button><button class="btn pequeno" data-rel="estoque" data-formato="xlsx">Excel</button></div></div>
+    {% endif %}
+    {% if 'cadastros' in usuario.modulos %}
+    <div class="rel"><h3>Produtos – cadastro e tributação</h3>
+      <p>Todos os produtos ativos com NCM, CEST, situação tributária dentro e fora do estado, saldo e alertas de cadastro.</p>
+      <div class="acoes"><button class="btn pequeno primario" data-rel="produtos" data-formato="xlsx">Excel</button><button class="btn pequeno" data-rel="produtos" data-formato="pdf">PDF</button></div></div>
+    <div class="rel"><h3>Clientes</h3>
+      <p>Cadastro completo de clientes: CPF/CNPJ, cidade, telefone, e-mail, situação e datas.</p>
+      <div class="acoes"><button class="btn pequeno primario" data-rel="clientes" data-formato="xlsx">Excel</button><button class="btn pequeno" data-rel="clientes" data-formato="pdf">PDF</button></div></div>
+    {% endif %}
+  </div>
+</div>
+<div class="cartao">
+  <div class="cartao-cab"><h2>Relatórios do ReportBuilder e padrões <span class="sub">· importados do Puma e criados no painel (pasta Relatórios padrões)</span></h2><span class="gtick" id="rb-info"></span></div>
+  <div class="filtros" style="box-shadow:none;margin-bottom:12px">
+    <label>Buscar<input id="rb-busca" class="largo" placeholder="nome do relatório ou pasta"></label>
+    <label>Pasta<select id="rb-pasta" class="largo"><option value="">Todas as pastas</option></select></label>
+    <label class="check"><input type="checkbox" id="rb-antigos"> mostrar antigos, cópias e testes</label>
+    <span class="gtick" id="rb-conta" style="margin-left:auto;align-self:center"></span>
+  </div>
+  <div id="rb-lista">Carregando…</div>
+</div>
+<div class="cartao">
+  <div class="cartao-cab"><h2>Consultas salvas <span class="sub">· criadas na tela Consulta SQL</span></h2></div>
+  <div class="lista-rel" id="consultas">Carregando…</div>
+</div>
+{% endblock %}

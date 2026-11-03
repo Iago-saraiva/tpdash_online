@@ -1,0 +1,32 @@
+; TP DASH Agente - configuracao (fica so neste servidor; a senha do banco NUNCA vai para o site)
+;
+; Um agente atende uma ou varias empresas (um banco do Puma por empresa).
+; Cada empresa e cadastrada no site e tem a sua propria chave.
+
+[banco]
+; firebird = banco do Puma | demo = dados ficticios para teste
+modo = firebird
+host = localhost
+porta = 3050
+arquivo = D:\puma\dados\PUMA.FDB
+usuario = SYSDBA
+senha = masterkey
+charset = WIN1252
+empresa = 1
+; Se o TP DASH ja esta instalado neste servidor, em vez de repetir os dados acima
+; use o config.ini dele (a senha nao precisa ser copiada):
+; usar_config_do_painel = D:\puma\painel_puma\config.ini
+
+; Outro banco no mesmo servidor (o que nao for informado vem do [banco]):
+; [banco:poligonal]
+; arquivo = D:\puma\dados\POLIGONAL\PUMA.FDB
+
+[nuvem]
+; endereco do site TP DASH online (sempre https)
+endereco = https://painel.exemplo.com.br
+; chave da empresa do [banco] principal, gerada no site em Empresas > Gerar chave (cole a linha inteira)
+chave =
+
+; Mais uma empresa neste mesmo agente: uma secao [nuvem:ID] para cada [banco:ID]
+; [nuvem:poligonal]
+; chave =

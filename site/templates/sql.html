@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="sql-layout">
+  <div class="cartao lista-tabelas">
+    <div class="cartao-cab"><h2>Tabelas</h2></div>
+    <input id="filtro-tabelas" class="campo" placeholder="Filtrar tabelas…">
+    <div id="tabelas"></div>
+    <p class="gtick" style="margin-top:8px">Clique para ver os campos; clique no campo (ou dê dois cliques na tabela) para inserir no SQL.</p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="cartao">
+      <div class="cartao-cab">
+        <select id="salvas" class="campo" style="max-width:340px"></select>
+        <span style="flex:1"></span>
+        <button class="btn pequeno" id="nova">Nova</button>
+      </div>
+      <textarea id="sql" class="sql-editor" spellcheck="false" placeholder="SELECT M.NUMEROMOV, M.DATAEMISSAO, M.VALORLIQUIDO&#10;FROM TMOV M&#10;WHERE M.CODTMV STARTING WITH '2.2'&#10;ORDER BY M.DATAEMISSAO DESC"></textarea>
+      <div id="params" style="margin-top:8px"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <button class="btn primario" id="executar">▶ Executar <span class="gtick" style="fill:none;color:inherit;opacity:.8">(Ctrl+Enter)</span></button>
+        <span class="gtick" id="tempo" style="font-size:12px"></span>
+        <span style="flex:1"></span>
+        <button class="btn pequeno" data-exportar="xlsx">Excel</button>
+        <button class="btn pequeno" data-exportar="pdf">PDF</button>
+      </div>
+      <div class="form-grade" style="margin-top:12px">
+        <label>Nome da consulta<input id="nome" class="campo" placeholder="ex.: Empréstimos por funcionário"></label>
+        <label>Descrição<input id="descricao" class="campo"></label>
+        <label class="check" style="flex-direction:row;align-self:end"><input type="checkbox" id="compartilhar"> Compartilhar com todos (aparece em Relatórios)</label>
+        <div style="display:flex;gap:8px;align-items:end"><button class="btn" id="salvar">Salvar</button><button class="btn perigo" id="excluir">Excluir</button></div>
+      </div>
+      <p class="gtick" style="font-size:12px;margin:10px 0 0">Somente leitura: o painel só aceita SELECT e roda tudo em transação de leitura — nada é gravado no banco do Puma. Selecione um trecho para executar só ele. Use <code>:NOME</code> no SQL para criar filtros (ex.: <code>WHERE M.DATAEMISSAO BETWEEN :DATA_INICIAL AND :DATA_FINAL</code>) — os campos aparecem acima do botão Executar. Para um filtro opcional use <code>(CAST(:TIPO AS VARCHAR(20)) IS NULL OR M.CODTMV = :TIPO)</code>.</p>
+    </div>
+    <div id="resultado" class="secao" hidden>
+      <div class="cartao">
+        <div class="cartao-cab"><h2>Gráfico</h2>
+          <label class="gtick">Tipo <select id="g-tipo" class="campo" style="min-width:auto;height:28px"><option value="barras">Barras</option><option value="colunas">Colunas</option><option value="linhas">Linhas</option><option value="rosca">Rosca</option><option value="nenhum">Nenhum</option></select></label>
+          <label class="gtick">Eixo / categoria <select id="g-x" class="campo" style="min-width:auto;height:28px"></select></label>
+          <label class="gtick">Valor <select id="g-y" class="campo" style="min-width:auto;height:28px"></select></label>
+        </div>
+        <div id="g-livre"></div>
+      </div>
+      <div class="cartao"><div class="cartao-cab"><h2>Resultado</h2></div><div id="tabela"></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

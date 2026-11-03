@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Instalar · TP DASH</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#13253d">
+  <link rel="apple-touch-icon" href="/static/icone-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TP DASH">
+  <script src="{{ url_for('static', filename='cabeca.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body class="login-pag instalar-pag" data-https="{{ 1 if https else 0 }}">
+<div class="login-box instalar-box">
+  <img src="{{ url_for('static', filename='logo-tpdash-preto.svg') }}" width="48" height="48" alt="TP DASH" class="logo-tpdash">
+  <h1>Instalar o TP DASH</h1>
+  <p>{{ empresa }}</p>
+
+  <div class="passo" id="passo-cert">
+    <div class="passo-cab"><span class="passo-num">1</span><strong>Conexão segura</strong><span class="passo-status" id="st-cert">verificando…</span></div>
+    <div class="passo-corpo" id="cert-corpo"></div>
+  </div>
+
+  <div class="passo" id="passo-inst">
+    <div class="passo-cab"><span class="passo-num">2</span><strong>Instalar o app</strong><span class="passo-status" id="st-inst"></span></div>
+    <div class="passo-corpo" id="inst-corpo"></div>
+  </div>
+
+  <div class="passo" id="passo-qr" hidden>
+    <div class="passo-cab"><span class="passo-num">📱</span><strong>No celular</strong></div>
+    <div class="passo-corpo">
+      <p class="nota">Aponte a câmera do celular para o código (o celular precisa estar na rede da empresa):</p>
+      <img src="/qr.svg" alt="QR Code com o endereço desta página" width="220" height="220" class="qr">
+      <p class="nota" id="endereco"></p>
+    </div>
+  </div>
+
+  <a class="btn" href="/" id="abrir">Abrir o painel</a>
+</div>
+<script src="{{ url_for('static', filename='instalar.js') }}"></script>
+</body></html>

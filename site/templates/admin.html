@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="aviso atencao" style="display:flex;gap:8px"><strong>Banco:</strong><span id="status-banco">verificando…</span></div>
+<div class="grade">
+  <div class="cartao c7" style="align-self:start"><div class="cartao-cab"><h2>Usuários <span class="sub">· clique para editar</span></h2><button class="btn pequeno primario" id="novo-usuario">Novo usuário</button></div>
+    <div id="tabela-usuarios"></div></div>
+  <div class="cartao c5">
+    <div class="cartao-cab"><h2 id="titulo-form">Novo usuário</h2></div>
+    <form id="form-usuario" autocomplete="off" style="display:flex;flex-direction:column;gap:12px">
+      <input type="hidden" name="id">
+      <div class="form-grade">
+        <label>Login<input name="login" class="campo" required></label>
+        <label>Nome<input name="nome" class="campo" required></label>
+        <label>Senha<input name="senha" type="password" class="campo" autocomplete="new-password" placeholder="Senha inicial"></label>
+      </div>
+      <div><div class="gtick" style="font-size:12px;margin-bottom:6px">Módulos liberados</div><div id="modulos" class="form-grade" style="grid-template-columns:repeat(2,1fr);gap:6px"></div></div>
+      <div class="perm" id="perm-bancos" hidden>
+        <div class="perm-tit">Empresas (bancos) que pode acessar</div>
+        <label class="check"><input type="radio" name="bancos_modo" value="todos" checked> Todas as empresas</label>
+        <label class="check"><input type="radio" name="bancos_modo" value="escolher"> Só as empresas que eu escolher</label>
+        <div class="picker-box lista-bancos" hidden></div>
+      </div>
+      <div class="perm" id="perm-rel">
+        <div class="perm-tit">Relatórios que aparecem para este usuário <span class="nota" id="rel-empresa"></span></div>
+        <label class="check"><input type="radio" name="rel_modo" value="todos" checked> Todos os relatórios dos módulos liberados</label>
+        <label class="check"><input type="radio" name="rel_modo" value="escolher"> Só os relatórios que eu escolher</label>
+        <div class="picker-box" hidden>
+          <div class="picker-barra"><input class="campo" type="search" placeholder="Buscar relatório ou pasta"><span class="nota"></span></div>
+          <div class="picker"></div>
+          <p class="nota">Marcar a pasta inteira libera também os relatórios que forem criados nela depois.</p>
+        </div>
+      </div>
+      <div class="perm" id="perm-tipos">
+        <div class="perm-tit">Tipos de movimento que pode consultar</div>
+        <label class="check"><input type="radio" name="tipos_modo" value="todos" checked> Todos os tipos</label>
+        <label class="check"><input type="radio" name="tipos_modo" value="escolher"> Só os tipos que eu escolher</label>
+        <div class="picker-box" hidden>
+          <div class="picker-barra"><input class="campo" type="search" placeholder="Buscar tipo (código ou nome)"><span class="nota"></span></div>
+          <div class="picker"></div>
+          <p class="nota">Marcar o grupo (ex.: 2.2) libera também os tipos novos desse grupo. Vale para Início, Movimentos, ficha do cliente e relatórios (filtro de tipo e colunas CODTMV). Não é permitido junto com Consulta SQL.</p>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" name="admin"> Administrador (acessa tudo e gerencia usuários)</label>
+      <label class="check"><input type="checkbox" name="ativo" checked> Ativo</label>
+      <p class="gtick" style="font-size:12px;margin:0">Na primeira entrada (ou após troca de senha pelo administrador) o usuário é obrigado a definir uma senha própria.</p>
+      <div><button class="btn primario">Salvar usuário</button></div>
+    </form>
+  </div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>Sincronização com o ReportBuilder</h2>
+      <button class="btn pequeno primario" id="rb-sync">Sincronizar agora</button><button class="btn pequeno" id="rb-sync-tudo" title="Converte de novo todos os relatórios (demora alguns minutos)">Reconverter todos</button></div>
+    <p class="nota" style="font-size:13px;margin:0">O painel confere sozinho o ReportBuilder do banco conectado e traz relatórios novos, alterados, movidos ou excluídos. Os ajustes feitos no painel (rb_ajustes.json) são mantidos.</p>
+    <div id="rb-sync-status" style="margin-top:8px;font-size:13px"></div>
+  </div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>Teste dos relatórios do ReportBuilder</h2><button class="btn pequeno" id="rb-testar">Testar todos no banco</button></div>
+    <p class="gtick" style="font-size:13px;margin:0">Executa cada relatório importado (1 linha, filtros vazios) para marcar os que dão erro. Leva alguns minutos; pode continuar usando o painel.</p>
+    <p id="rb-teste-status" style="margin:8px 0 0"></p>
+  </div>
+  <div class="cartao c12"><div class="cartao-cab"><h2>Últimos acessos e ações</h2></div><div id="tabela-acessos"></div></div>
+</div>
+{% endblock %}

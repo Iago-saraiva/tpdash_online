@@ -1,0 +1,73 @@
+; ==========================================================
+;  TP DASH - configuração
+;  Na primeira execução este arquivo é copiado para config.ini.
+;  Edite o config.ini (não este) e reinicie o painel.
+; ==========================================================
+
+[banco]
+; Nome desta empresa na lista "Empresa" do login (vazio = nome_empresa do [servidor])
+nome =
+; firebird = conecta no banco do Puma | demo = dados fictícios para teste
+modo = firebird
+host = localhost
+porta = 3050
+arquivo = D:\PUMA\DADOS\METODO\DADOS\PUMA.FDB
+usuario = SYSDBA
+senha = masterkey
+; O banco do Puma usa charset NONE com textos acentuados em padrão Windows
+charset = WIN1252
+; Caminho do fbclient.dll (deixe vazio se o Firebird estiver instalado nesta máquina)
+fbclient =
+empresa = 1
+
+; ---------------------------------------------------------------------------
+; VÁRIAS EMPRESAS (um banco do Puma para cada uma)
+; O [banco] acima é a empresa principal (dê um nome a ela com "nome =" dentro do [banco]).
+; Para cada outra empresa, crie uma seção [banco:ID] (ID = só letras/números, sem espaço).
+; O que não for informado é copiado do [banco] (host, porta, usuário, senha...).
+; No login aparece a lista "Empresa" e, dentro do painel, um seletor no topo.
+;
+; [banco:poligonal]
+; nome = Poligonal
+; arquivo = D:\PUMA\DADOS\POLIGONAL\DADOS\PUMA.FDB
+; empresa = 1
+; ---------------------------------------------------------------------------
+
+[servidor]
+; 0.0.0.0 = acessível pelos outros PCs da rede | 127.0.0.1 = só nesta máquina
+host = 0.0.0.0
+porta = 8050
+nome_empresa = Método Construções Elétricas
+; Máximo de linhas retornadas por consulta/tela
+limite_linhas = 5000
+; HTTPS (conexão criptografada). sim = recomendado. O certificado é criado sozinho
+; em dados\certificado.pem; copie dados\certificado.cer para os PCs (veja o LEIA-ME).
+https = sim
+; Nome fixo do painel na rede: os aparelhos acessam https://painel.local:8050
+; (o painel anuncia esse nome sozinho na rede local; vazio = não anuncia)
+nome_local = painel
+; Outros nomes/IPs usados para acessar o servidor, separados por vírgula, para o
+; certificado aceitar (ex.: um nome cadastrado no DNS do roteador: painel.lan).
+; O nome do computador, nome.local e os IPs atuais já entram sozinhos.
+nomes =
+; IPs ou faixas que podem acessar (vazio = todos). Ex.: 192.168.0.0/24, 10.0.0.15
+permitir =
+; Tempo de sessão (minutos) antes de pedir login de novo
+sessao_minutos = 480
+; "Manter conectado neste aparelho" (login): dias até pedir a senha de novo (0 = desativa a opção)
+lembrar_dias = 30
+chave_secreta = TROQUE-ESTA-CHAVE
+
+[relatorios]
+; De quantos em quantos minutos o painel confere se há relatórios novos ou alterados
+; no ReportBuilder do banco (0 = não sincroniza sozinho; dá para sincronizar em Administração)
+sincronizar_minutos = 10
+
+; Nomes exibidos para os códigos de status (ajuste conforme o Puma)
+[status_movimento]
+C = Cancelado
+
+[status_lancamento]
+A = Em aberto
+B = Baixado
+C = Cancelado

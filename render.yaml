@@ -1,0 +1,36 @@
+# Render Blueprint do TP DASH online (site + TP DASH ADMIN no mesmo serviço).
+# No Render: New > Blueprint > escolha este repositório. Depois preencha as variáveis marcadas "sync: false".
+services:
+  - type: web
+    name: tpdash-online
+    runtime: python
+    plan: starter              # precisa de plano pago: o plano grátis não tem disco e apaga os dados
+    region: virginia
+    numInstances: 1            # um processo só: os pedidos aos agentes ficam em memória
+    buildCommand: pip install -r requirements.txt
+    startCommand: python servidor_nuvem.py
+    healthCheckPath: /saude
+    autoDeploy: true
+    disk:
+      name: tpdash-dados
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: TPDASH_NUVEM
+        value: "1"
+      - key: TPDASH_DADOS
+        value: /var/data
+      - key: TPDASH_CHAVE_SECRETA
+        generateValue: true
+      - key: TPDASH_ADMIN_CHAVE_SECRETA
+        generateValue: true
+      - key: TPDASH_NOME
+        value: TP DASH
+      - key: TPDASH_ADMIN_HOST          # ex.: admin.seudominio.com.br (deixe vazio se ainda não tem domínio)
+        sync: false
+      - key: TPDASH_ADMIN_CAMINHO       # ex.: /adm-7f3k9q2m (use enquanto não tem domínio próprio)
+        sync: false
+      - key: TPDASH_ADMIN_PERMITIR      # opcional: IP da Tecnoplan, para só ela abrir o ADMIN
+        sync: false

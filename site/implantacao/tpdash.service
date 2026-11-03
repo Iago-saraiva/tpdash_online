@@ -1,0 +1,14 @@
+# /etc/systemd/system/tpdash.service  (Ubuntu)
+[Unit]
+Description=TP DASH online (site)
+After=network.target
+
+[Service]
+User=tpdash
+WorkingDirectory=/opt/tpdash/site
+ExecStart=/opt/tpdash/site/.venv/bin/python app.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

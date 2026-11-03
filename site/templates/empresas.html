@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<p class="nota" style="margin:0 0 12px">Área da Tecnoplan: cada empresa cliente tem um agente instalado no servidor dela. O agente usa a chave gerada aqui para se conectar ao site. Os usuários de uma empresa só enxergam os dados dela.</p>
+<div class="grade">
+  <div class="cartao c8" style="align-self:start"><div class="cartao-cab"><h2>Empresas</h2></div>
+    <div class="tabela-wrap"><table class="dados" id="tabela-empresas"><thead><tr>
+      <th>Identificador</th><th>Nome</th><th>Situação</th><th>Agente</th><th>Último contato</th><th>Banco</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div id="chave-nova" class="aviso" hidden style="margin-top:12px"></div>
+  </div>
+  <div class="cartao c4" style="align-self:start">
+    <div class="cartao-cab"><h2>Nova empresa</h2></div>
+    <form id="form-empresa" autocomplete="off" style="display:flex;flex-direction:column;gap:10px">
+      <label>Identificador<input name="id" class="campo" required placeholder="ex.: metodo" pattern="[a-z0-9][a-z0-9_\-]{1,29}"></label>
+      <label>Nome<input name="nome" class="campo" required placeholder="ex.: Método Construções Elétricas"></label>
+      <label class="check"><input type="checkbox" name="ativa" checked> Ativa</label>
+      <p class="nota" style="margin:0">O identificador não muda depois. Desativar uma empresa bloqueia o acesso dos usuários e do agente dela.</p>
+      <div><button class="btn primario">Salvar empresa</button></div>
+    </form>
+    <div class="cartao-cab" style="margin-top:18px"><h2>Administrador da empresa</h2></div>
+    <form id="form-admin-emp" autocomplete="off" style="display:flex;flex-direction:column;gap:10px">
+      <label>Empresa<select name="empresa" class="campo" required></select></label>
+      <label>Login<input name="login" class="campo" required></label>
+      <label>Nome<input name="nome" class="campo" required></label>
+      <label>Senha inicial<input name="senha" type="password" class="campo" required autocomplete="new-password"></label>
+      <p class="nota" style="margin:0">Ele troca a senha na primeira entrada e cadastra os outros usuários da empresa em Administração.</p>
+      <div><button class="btn">Criar administrador</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

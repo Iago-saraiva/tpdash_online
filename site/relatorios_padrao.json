@@ -1,0 +1,3537 @@
+{
+ "_leia": "Relatórios padrão do painel (não vêm do ReportBuilder). Aparecem na pasta 'Relatórios padrões'.",
+ "relatorios": [
+  {
+   "id": "pd-vendas-geral",
+   "nome": "Relatório de Vendas Geral",
+   "pasta": "Relatórios padrões / Vendas/Faturamento",
+   "modulo": "movimentos",
+   "alterado": "2026-10-27",
+   "antigo": false,
+   "lixeira": false,
+   "padrao_painel": true,
+   "parametros": [
+    {
+     "nome": "SITUACAO",
+     "tipo": "opcao",
+     "rotulo": "Situação",
+     "padrao": "AUTORIZADAS",
+     "obrigatorio": true,
+     "ajuda": "",
+     "opcoes": [
+      [
+       "AUTORIZADAS",
+       "Autorizadas"
+      ],
+      [
+       "CANCELADAS",
+       "Canceladas"
+      ],
+      [
+       "AMBAS",
+       "Autorizadas e canceladas"
+      ]
+     ]
+    },
+    {
+     "nome": "DATA_EMISSAO_DE",
+     "tipo": "data",
+     "rotulo": "Data de emissão (de)",
+     "padrao": "inicio_mes",
+     "obrigatorio": true,
+     "ajuda": ""
+    },
+    {
+     "nome": "DATA_EMISSAO_ATE",
+     "tipo": "data",
+     "rotulo": "Data de emissão (até)",
+     "padrao": "hoje",
+     "obrigatorio": true,
+     "ajuda": ""
+    },
+    {
+     "nome": "CODIGO_TIPO_MOVIMENTO",
+     "tipo": "lista",
+     "rotulo": "Tipo de movimento (2.x)",
+     "padrao": null,
+     "obrigatorio": false,
+     "ajuda": "vazio = todos os tipos que começam com 2",
+     "escolha": "tipos_mov",
+     "prefixo": "2"
+    },
+    {
+     "nome": "FILIAL",
+     "tipo": "numero",
+     "rotulo": "Filial",
+     "padrao": null,
+     "obrigatorio": false,
+     "ajuda": "vazio = todas as filiais",
+     "escolha": "filiais"
+    }
+   ],
+   "visoes": [
+    {
+     "nome": "Vendas",
+     "sql": "SELECT X.CODCFO || ' ' || COALESCE(C.NOME, '') AS CLIENTE_FORNEC,\n       X.NUMEROMOV AS DOCUMENTO, X.SERIE, X.DATAEMISSAO, X.CODVEN1 AS VEND,\n       X.VALORBRUTO, COALESCE(X.VALORDESC, 0) + X.DESC_ITENS AS DESCONTO, X.VALORDESP AS DESPESA, X.VALORLIQUIDO,\n       X.VALORLIQUIDO * 100 / NULLIF(SUM(X.VALORLIQUIDO) OVER (), 0) AS PERC,\n       CASE WHEN P.AVISTA = 'T' THEN 'V' ELSE 'P' END AS AVISTA,\n       CASE X.SIT WHEN 'C' THEN 'Cancelada' ELSE 'Autorizada' END AS SITUACAO,\n       X.CODTMV, X.CODFILIAL || '-' || COALESCE(F.NOME, F.NOMEFANTASIA, '') AS FILIAL,\n       COALESCE(F.NOMEFANTASIA, F.NOME, '') AS EMPRESA,\n       MIN(X.CODFILIAL) OVER () AS FILIAL_DE, MAX(X.CODFILIAL) OVER () AS FILIAL_ATE,\n       CAST(:DATA_EMISSAO_DE AS DATE) AS PERIODO_INI, CAST(:DATA_EMISSAO_ATE AS DATE) AS PERIODO_FIM,\n       X.IDMOV\nFROM (\n  SELECT M.IDMOV, M.CODEMPRESA, M.CODCFO, M.NUMEROMOV, M.SERIE, M.DATAEMISSAO, M.CODVEN1, M.CODTMV,\n         M.CODCPG, M.CODFILIAL, M.VALORBRUTO, M.VALORDESC, M.VALORDESP, M.VALORLIQUIDO,\n         COALESCE((SELECT SUM(I.VALORDESC) FROM TMOVITENS I WHERE I.IDMOV = M.IDMOV AND I.CODEMPRESA = M.CODEMPRESA), 0) AS DESC_ITENS,\n         CASE WHEN M.STATUS = 'C'\n                OR EXISTS (SELECT 1 FROM TMOVNFE N WHERE N.IDMOV = M.IDMOV AND N.CODEMPRESA = M.CODEMPRESA AND N.STATUSNFE = 2)\n                OR EXISTS (SELECT 1 FROM TMOVNFSE S WHERE S.IDMOV = M.IDMOV AND S.STATUSNFSE = 3)\n              THEN 'C' ELSE 'A' END AS SIT\n  FROM TMOV M\n  WHERE M.CODTMV STARTING WITH '2'\n    AND (CAST(:DATA_EMISSAO_DE AS DATE) IS NULL OR M.DATAEMISSAO >= CAST(:DATA_EMISSAO_DE AS DATE))\n    AND (CAST(:DATA_EMISSAO_ATE AS DATE) IS NULL OR M.DATAEMISSAO <= CAST(:DATA_EMISSAO_ATE AS DATE))\n    AND (CAST(:CODIGO_TIPO_MOVIMENTO AS VARCHAR(2000)) IS NULL OR POSITION(',' || TRIM(M.CODTMV) || ',' IN ',' || REPLACE(CAST(:CODIGO_TIPO_MOVIMENTO AS VARCHAR(2000)), ' ', '') || ',') > 0)\n    AND (CAST(:FILIAL AS INTEGER) IS NULL OR M.CODFILIAL = CAST(:FILIAL AS INTEGER))\n) X\nLEFT JOIN FCFO C ON C.CODCFO = X.CODCFO AND C.CODEMPRESA = X.CODEMPRESA\nLEFT JOIN TCONDPGTO P ON P.CODCONDPGTO = X.CODCPG AND P.CODEMPRESA = X.CODEMPRESA\nLEFT JOIN GFILIAL F ON F.CODFILIAL = X.CODFILIAL AND F.CODEMPRESA = X.CODEMPRESA\nWHERE (COALESCE(CAST(:SITUACAO AS VARCHAR(20)), 'AMBAS') = 'AMBAS'\n       OR X.SIT = SUBSTRING(CAST(:SITUACAO AS VARCHAR(20)) FROM 1 FOR 1))\nORDER BY X.DATAEMISSAO, X.NUMEROMOV",
+     "mestre": null,
+     "ligacoes": []
+    }
+   ],
+   "layout_padrao": {
+    "visoes": {
+     "Vendas": {
+      "oculta": false,
+      "titulo": "Vendas",
+      "colunas": [
+       {
+        "campo": "CLIENTE_FORNEC",
+        "rotulo": "Cliente/Fornec.",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "DOCUMENTO",
+        "rotulo": "Documento",
+        "visivel": true,
+        "formato": "auto",
+        "total": "contagem",
+        "abaixo": false
+       },
+       {
+        "campo": "SERIE",
+        "rotulo": "Série",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "DATAEMISSAO",
+        "rotulo": "Dt. emissão",
+        "visivel": true,
+        "formato": "data",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "VEND",
+        "rotulo": "Vend.",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "VALORBRUTO",
+        "rotulo": "Valor bruto",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "DESCONTO",
+        "rotulo": "Desconto",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "DESPESA",
+        "rotulo": "Despesa",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "VALORLIQUIDO",
+        "rotulo": "Valor líq.",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "PERC",
+        "rotulo": "%",
+        "visivel": true,
+        "formato": "percentual",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "SITUACAO",
+        "rotulo": "Situação",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "AVISTA",
+        "rotulo": "À vista/prazo",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "CODTMV",
+        "rotulo": "Tipo mov.",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "FILIAL",
+        "rotulo": "Filial",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "EMPRESA",
+        "rotulo": "Empresa",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "FILIAL_DE",
+        "rotulo": "Filial de",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "FILIAL_ATE",
+        "rotulo": "Filial até",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "PERIODO_INI",
+        "rotulo": "Período de",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "PERIODO_FIM",
+        "rotulo": "Período até",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "IDMOV",
+        "rotulo": "IDMOV",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       }
+      ],
+      "ordenar": [],
+      "agrupar": [],
+      "grafico": {
+       "tipo": "nenhum",
+       "x": "",
+       "y": "",
+       "agregacao": "soma",
+       "por_mes": false,
+       "titulo": ""
+      },
+      "indicadores": [
+       {
+        "rotulo": "Movimentos",
+        "campo": "DOCUMENTO",
+        "agregacao": "contagem",
+        "formato": "inteiro"
+       },
+       {
+        "rotulo": "Valor bruto",
+        "campo": "VALORBRUTO",
+        "agregacao": "soma",
+        "formato": "moeda"
+       },
+       {
+        "rotulo": "Valor líquido",
+        "campo": "VALORLIQUIDO",
+        "agregacao": "soma",
+        "formato": "moeda"
+       }
+      ]
+     }
+    },
+    "pdf": {
+     "orientacao": "retrato"
+    }
+   },
+   "desenho": {
+    "versao": 1,
+    "origem": "padrao",
+    "pagina": {
+     "largura": 210.0,
+     "altura": 297.0,
+     "margens": {
+      "sup": 8.0,
+      "inf": 8.0,
+      "esq": 8.0,
+      "dir": 8.0
+     }
+    },
+    "relatorio": {
+     "visao": "Vendas",
+     "bandas": {
+      "cabecalho": {
+       "altura": 18.6,
+       "visivel": true,
+       "dinamica": true,
+       "itens": [
+        {
+         "tipo": "texto",
+         "x": 0.0,
+         "y": 0.0,
+         "w": 120.0,
+         "h": 5.0,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 11.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Relatório de Vendas Geral"
+        },
+        {
+         "tipo": "variavel",
+         "x": 0.0,
+         "y": 5.2,
+         "w": 120.0,
+         "h": 3.8,
+         "nome": "Cabecalho",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := 'Período: ' + FormatDateTime('dd/mm/yyyy', Vendas['PERIODO_INI']) + ' a ' +\n    FormatDateTime('dd/mm/yyyy', Vendas['PERIODO_FIM']) + ',  Fil.: ' + Vendas['FILIAL'];\nend;",
+         "tipo_dado": "texto",
+         "calc_tipo": "inicio",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "texto",
+         "x": 128.0,
+         "y": 5.2,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Emissão:"
+        },
+        {
+         "tipo": "sistema",
+         "x": 143.0,
+         "y": 5.2,
+         "w": 22.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "dd/mm/yyyy",
+         "branco_zero": false,
+         "sistema": "data"
+        },
+        {
+         "tipo": "sistema",
+         "x": 168.0,
+         "y": 5.2,
+         "w": 26.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "sistema": "pagina_desc"
+        },
+        {
+         "tipo": "linha",
+         "x": 0.0,
+         "y": 10.1,
+         "w": 194.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.6,
+         "cor": "#000000",
+         "dupla": true
+        },
+        {
+         "tipo": "texto",
+         "x": 0.0,
+         "y": 12.2,
+         "w": 58.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Cliente/Fornec."
+        },
+        {
+         "tipo": "texto",
+         "x": 59.0,
+         "y": 12.2,
+         "w": 18.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Documento"
+        },
+        {
+         "tipo": "texto",
+         "x": 78.0,
+         "y": 12.2,
+         "w": 7.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Série"
+        },
+        {
+         "tipo": "texto",
+         "x": 86.0,
+         "y": 12.2,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Dt. Emissão"
+        },
+        {
+         "tipo": "texto",
+         "x": 101.0,
+         "y": 12.2,
+         "w": 8.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Vend."
+        },
+        {
+         "tipo": "texto",
+         "x": 110.0,
+         "y": 12.2,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Valor Bruto"
+        },
+        {
+         "tipo": "texto",
+         "x": 128.0,
+         "y": 12.2,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Desconto"
+        },
+        {
+         "tipo": "texto",
+         "x": 143.0,
+         "y": 12.2,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Despesa"
+        },
+        {
+         "tipo": "texto",
+         "x": 158.0,
+         "y": 12.2,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Valor Líq."
+        },
+        {
+         "tipo": "texto",
+         "x": 176.0,
+         "y": 12.2,
+         "w": 12.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "%"
+        },
+        {
+         "tipo": "linha",
+         "x": 0.0,
+         "y": 16.8,
+         "w": 194.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.6,
+         "cor": "#000000",
+         "dupla": true
+        }
+       ]
+      },
+      "detalhe": {
+       "altura": 4.4,
+       "visivel": true,
+       "dinamica": true,
+       "itens": [
+        {
+         "tipo": "campo",
+         "x": 0.0,
+         "y": 0.5,
+         "w": 58.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "CLIENTE_FORNEC",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 59.0,
+         "y": 0.5,
+         "w": 18.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "DOCUMENTO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 78.0,
+         "y": 0.5,
+         "w": 7.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "SERIE",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 86.0,
+         "y": 0.5,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "dd/mm/yy",
+         "branco_zero": false,
+         "campo": "DATAEMISSAO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 101.0,
+         "y": 0.5,
+         "w": 8.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "VEND",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 110.0,
+         "y": 0.5,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "VALORBRUTO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 128.0,
+         "y": 0.5,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "DESCONTO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 143.0,
+         "y": 0.5,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "DESPESA",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 158.0,
+         "y": 0.5,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "VALORLIQUIDO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 176.0,
+         "y": 0.5,
+         "w": 12.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0.00",
+         "branco_zero": false,
+         "campo": "PERC",
+         "visao": null,
+         "esticar": false
+        }
+       ]
+      },
+      "sumario": {
+       "altura": 22.0,
+       "visivel": true,
+       "dinamica": true,
+       "itens": [
+        {
+         "tipo": "linha",
+         "x": 110.0,
+         "y": 0.8,
+         "w": 17.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "linha",
+         "x": 128.0,
+         "y": 0.8,
+         "w": 14.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "linha",
+         "x": 143.0,
+         "y": 0.8,
+         "w": 14.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "linha",
+         "x": 158.0,
+         "y": 0.8,
+         "w": 17.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "texto",
+         "x": 48.0,
+         "y": 5.5,
+         "w": 30.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "TOTAL À VISTA:"
+        },
+        {
+         "tipo": "texto",
+         "x": 79.0,
+         "y": 5.5,
+         "w": 16.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Qtd. Mov.:"
+        },
+        {
+         "tipo": "variavel",
+         "x": 96.0,
+         "y": 5.5,
+         "w": 10.0,
+         "h": 3.8,
+         "nome": "VistaQtd",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'V' then\n    Value := Value + 1;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 110.0,
+         "y": 5.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "VistaBruto",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'V' then\n    Value := Value + Vendas['VALORBRUTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 128.0,
+         "y": 5.5,
+         "w": 14.0,
+         "h": 3.8,
+         "nome": "VistaDesc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'V' then\n    Value := Value + Vendas['DESCONTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 143.0,
+         "y": 5.5,
+         "w": 14.0,
+         "h": 3.8,
+         "nome": "VistaDesp",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'V' then\n    Value := Value + Vendas['DESPESA'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 158.0,
+         "y": 5.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "VistaLiq",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'V' then\n    Value := Value + Vendas['VALORLIQUIDO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 176.0,
+         "y": 5.9,
+         "w": 12.0,
+         "h": 3.8,
+         "nome": "VistaPerc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := VistaLiq.Value * 100 / GeralLiq.Value;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "fim",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "texto",
+         "x": 48.0,
+         "y": 10.5,
+         "w": 30.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "TOTAL À PRAZO:"
+        },
+        {
+         "tipo": "texto",
+         "x": 79.0,
+         "y": 10.5,
+         "w": 16.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Qtd. Mov.:"
+        },
+        {
+         "tipo": "variavel",
+         "x": 96.0,
+         "y": 10.5,
+         "w": 10.0,
+         "h": 3.8,
+         "nome": "PrazoQtd",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'P' then\n    Value := Value + 1;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 110.0,
+         "y": 10.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "PrazoBruto",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'P' then\n    Value := Value + Vendas['VALORBRUTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 128.0,
+         "y": 10.5,
+         "w": 14.0,
+         "h": 3.8,
+         "nome": "PrazoDesc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'P' then\n    Value := Value + Vendas['DESCONTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 143.0,
+         "y": 10.5,
+         "w": 14.0,
+         "h": 3.8,
+         "nome": "PrazoDesp",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'P' then\n    Value := Value + Vendas['DESPESA'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 158.0,
+         "y": 10.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "PrazoLiq",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Vendas['AVISTA'] = 'P' then\n    Value := Value + Vendas['VALORLIQUIDO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 176.0,
+         "y": 10.9,
+         "w": 12.0,
+         "h": 3.8,
+         "nome": "PrazoPerc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := PrazoLiq.Value * 100 / GeralLiq.Value;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "fim",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "texto",
+         "x": 48.0,
+         "y": 15.5,
+         "w": 30.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "TOTAL GERAL:"
+        },
+        {
+         "tipo": "texto",
+         "x": 79.0,
+         "y": 15.5,
+         "w": 16.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Qtd. Mov.:"
+        },
+        {
+         "tipo": "variavel",
+         "x": 96.0,
+         "y": 15.5,
+         "w": 10.0,
+         "h": 3.8,
+         "nome": "GeralQtd",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + 1;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 110.0,
+         "y": 15.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "GeralBruto",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Vendas['VALORBRUTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 128.0,
+         "y": 15.5,
+         "w": 14.0,
+         "h": 3.8,
+         "nome": "GeralDesc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Vendas['DESCONTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 143.0,
+         "y": 15.5,
+         "w": 14.0,
+         "h": 3.8,
+         "nome": "GeralDesp",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Vendas['DESPESA'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 158.0,
+         "y": 15.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "GeralLiq",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Vendas['VALORLIQUIDO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        }
+       ]
+      },
+      "rodape": {
+       "altura": 0,
+       "visivel": true,
+       "dinamica": true,
+       "itens": []
+      }
+     },
+     "grupos": [],
+     "titulo_antes": true
+    },
+    "aliases": {}
+   }
+  },
+  {
+   "id": "pd-resumo-compras",
+   "nome": "Resumo de Compras",
+   "pasta": "Relatórios padrões / Compras",
+   "modulo": "movimentos",
+   "alterado": "2026-10-27",
+   "antigo": false,
+   "lixeira": false,
+   "padrao_painel": true,
+   "parametros": [
+    {
+     "nome": "SITUACAO",
+     "tipo": "opcao",
+     "rotulo": "Situação",
+     "padrao": "AUTORIZADAS",
+     "obrigatorio": true,
+     "ajuda": "",
+     "opcoes": [
+      [
+       "AUTORIZADAS",
+       "Autorizadas"
+      ],
+      [
+       "CANCELADAS",
+       "Canceladas"
+      ],
+      [
+       "AMBAS",
+       "Autorizadas e canceladas"
+      ]
+     ]
+    },
+    {
+     "nome": "DATA_EMISSAO_DE",
+     "tipo": "data",
+     "rotulo": "Data de emissão (de)",
+     "padrao": "inicio_mes",
+     "obrigatorio": true,
+     "ajuda": ""
+    },
+    {
+     "nome": "DATA_EMISSAO_ATE",
+     "tipo": "data",
+     "rotulo": "Data de emissão (até)",
+     "padrao": "hoje",
+     "obrigatorio": true,
+     "ajuda": ""
+    },
+    {
+     "nome": "CODIGO_TIPO_MOVIMENTO",
+     "tipo": "lista",
+     "rotulo": "Tipo de movimento (1.x)",
+     "padrao": null,
+     "obrigatorio": false,
+     "ajuda": "vazio = todos os tipos que começam com 1",
+     "escolha": "tipos_mov",
+     "prefixo": "1"
+    },
+    {
+     "nome": "FILIAL",
+     "tipo": "numero",
+     "rotulo": "Filial",
+     "padrao": null,
+     "obrigatorio": false,
+     "ajuda": "vazio = todas as filiais",
+     "escolha": "filiais"
+    }
+   ],
+   "visoes": [
+    {
+     "nome": "Compras",
+     "sql": "SELECT X.CODCFO || ' ' || COALESCE(C.NOME, '') AS CLIENTE_FORNEC,\n       X.NUMEROMOV AS DOCUMENTO, X.SERIE, X.DATAEMISSAO, X.CODVEN1 AS VEND,\n       X.VALORBRUTO, COALESCE(X.VALORDESC, 0) + X.DESC_ITENS AS DESCONTO, X.VALORDESP AS DESPESA, X.VALORLIQUIDO,\n       X.VALORLIQUIDO * 100 / NULLIF(SUM(X.VALORLIQUIDO) OVER (), 0) AS PERC,\n       CASE WHEN P.AVISTA = 'T' THEN 'V' ELSE 'P' END AS AVISTA,\n       CASE X.SIT WHEN 'C' THEN 'Cancelada' ELSE 'Autorizada' END AS SITUACAO,\n       X.CODTMV, X.CODFILIAL || '-' || COALESCE(F.NOME, F.NOMEFANTASIA, '') AS FILIAL,\n       COALESCE(F.NOMEFANTASIA, F.NOME, '') AS EMPRESA,\n       MIN(X.CODFILIAL) OVER () AS FILIAL_DE, MAX(X.CODFILIAL) OVER () AS FILIAL_ATE,\n       CAST(:DATA_EMISSAO_DE AS DATE) AS PERIODO_INI, CAST(:DATA_EMISSAO_ATE AS DATE) AS PERIODO_FIM,\n       X.IDMOV\nFROM (\n  SELECT M.IDMOV, M.CODEMPRESA, M.CODCFO, M.NUMEROMOV, M.SERIE, M.DATAEMISSAO, M.CODVEN1, M.CODTMV,\n         M.CODCPG, M.CODFILIAL, M.VALORBRUTO, M.VALORDESC, M.VALORDESP, M.VALORLIQUIDO,\n         COALESCE((SELECT SUM(I.VALORDESC) FROM TMOVITENS I WHERE I.IDMOV = M.IDMOV AND I.CODEMPRESA = M.CODEMPRESA), 0) AS DESC_ITENS,\n         CASE WHEN M.STATUS = 'C'\n                OR EXISTS (SELECT 1 FROM TMOVNFE N WHERE N.IDMOV = M.IDMOV AND N.CODEMPRESA = M.CODEMPRESA AND N.STATUSNFE = 2)\n                OR EXISTS (SELECT 1 FROM TMOVNFSE S WHERE S.IDMOV = M.IDMOV AND S.STATUSNFSE = 3)\n              THEN 'C' ELSE 'A' END AS SIT\n  FROM TMOV M\n  WHERE M.CODTMV STARTING WITH '1'\n    AND (CAST(:DATA_EMISSAO_DE AS DATE) IS NULL OR M.DATAEMISSAO >= CAST(:DATA_EMISSAO_DE AS DATE))\n    AND (CAST(:DATA_EMISSAO_ATE AS DATE) IS NULL OR M.DATAEMISSAO <= CAST(:DATA_EMISSAO_ATE AS DATE))\n    AND (CAST(:CODIGO_TIPO_MOVIMENTO AS VARCHAR(2000)) IS NULL OR POSITION(',' || TRIM(M.CODTMV) || ',' IN ',' || REPLACE(CAST(:CODIGO_TIPO_MOVIMENTO AS VARCHAR(2000)), ' ', '') || ',') > 0)\n    AND (CAST(:FILIAL AS INTEGER) IS NULL OR M.CODFILIAL = CAST(:FILIAL AS INTEGER))\n) X\nLEFT JOIN FCFO C ON C.CODCFO = X.CODCFO AND C.CODEMPRESA = X.CODEMPRESA\nLEFT JOIN TCONDPGTO P ON P.CODCONDPGTO = X.CODCPG AND P.CODEMPRESA = X.CODEMPRESA\nLEFT JOIN GFILIAL F ON F.CODFILIAL = X.CODFILIAL AND F.CODEMPRESA = X.CODEMPRESA\nWHERE (COALESCE(CAST(:SITUACAO AS VARCHAR(20)), 'AMBAS') = 'AMBAS'\n       OR X.SIT = SUBSTRING(CAST(:SITUACAO AS VARCHAR(20)) FROM 1 FOR 1))\nORDER BY X.DATAEMISSAO, X.NUMEROMOV",
+     "mestre": null,
+     "ligacoes": []
+    }
+   ],
+   "layout_padrao": {
+    "visoes": {
+     "Compras": {
+      "oculta": false,
+      "titulo": "Compras",
+      "colunas": [
+       {
+        "campo": "CLIENTE_FORNEC",
+        "rotulo": "Cliente/Fornec.",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "DOCUMENTO",
+        "rotulo": "Documento",
+        "visivel": true,
+        "formato": "auto",
+        "total": "contagem",
+        "abaixo": false
+       },
+       {
+        "campo": "SERIE",
+        "rotulo": "Série",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "DATAEMISSAO",
+        "rotulo": "Dt. emissão",
+        "visivel": true,
+        "formato": "data",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "VEND",
+        "rotulo": "Vend.",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "VALORBRUTO",
+        "rotulo": "Valor bruto",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "DESCONTO",
+        "rotulo": "Desconto",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "DESPESA",
+        "rotulo": "Despesa",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "VALORLIQUIDO",
+        "rotulo": "Valor líq.",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "PERC",
+        "rotulo": "%",
+        "visivel": false,
+        "formato": "percentual",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "SITUACAO",
+        "rotulo": "Situação",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "AVISTA",
+        "rotulo": "À vista/prazo",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "CODTMV",
+        "rotulo": "Tipo mov.",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "FILIAL",
+        "rotulo": "Filial",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "EMPRESA",
+        "rotulo": "Empresa",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "FILIAL_DE",
+        "rotulo": "Filial de",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "FILIAL_ATE",
+        "rotulo": "Filial até",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "PERIODO_INI",
+        "rotulo": "Período de",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "PERIODO_FIM",
+        "rotulo": "Período até",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "IDMOV",
+        "rotulo": "IDMOV",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       }
+      ],
+      "ordenar": [],
+      "agrupar": [],
+      "grafico": {
+       "tipo": "nenhum",
+       "x": "",
+       "y": "",
+       "agregacao": "soma",
+       "por_mes": false,
+       "titulo": ""
+      },
+      "indicadores": [
+       {
+        "rotulo": "Movimentos",
+        "campo": "DOCUMENTO",
+        "agregacao": "contagem",
+        "formato": "inteiro"
+       },
+       {
+        "rotulo": "Valor bruto",
+        "campo": "VALORBRUTO",
+        "agregacao": "soma",
+        "formato": "moeda"
+       },
+       {
+        "rotulo": "Valor líquido",
+        "campo": "VALORLIQUIDO",
+        "agregacao": "soma",
+        "formato": "moeda"
+       }
+      ]
+     }
+    },
+    "pdf": {
+     "orientacao": "retrato"
+    }
+   },
+   "desenho": {
+    "versao": 1,
+    "origem": "padrao",
+    "pagina": {
+     "largura": 210.0,
+     "altura": 297.0,
+     "margens": {
+      "sup": 8.0,
+      "inf": 8.0,
+      "esq": 8.0,
+      "dir": 8.0
+     }
+    },
+    "relatorio": {
+     "visao": "Compras",
+     "bandas": {
+      "cabecalho": {
+       "altura": 23.2,
+       "visivel": true,
+       "dinamica": true,
+       "itens": [
+        {
+         "tipo": "campo",
+         "x": 0.0,
+         "y": 0.0,
+         "w": 120.0,
+         "h": 4.0,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.5,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "EMPRESA",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "texto",
+         "x": 0.0,
+         "y": 4.6,
+         "w": 120.0,
+         "h": 5.0,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 10.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Resumo de Compras"
+        },
+        {
+         "tipo": "variavel",
+         "x": 0.0,
+         "y": 9.8,
+         "w": 120.0,
+         "h": 3.8,
+         "nome": "Cabecalho",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := 'Período: ' + FormatDateTime('dd/mm/yyyy', Compras['PERIODO_INI']) + ' a ' +\n    FormatDateTime('dd/mm/yyyy', Compras['PERIODO_FIM']) + ', Filial: ' + Compras['FILIAL_DE'] + ' até Filial: ' + Compras['FILIAL_ATE'];\nend;",
+         "tipo_dado": "texto",
+         "calc_tipo": "inicio",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "texto",
+         "x": 128.0,
+         "y": 9.8,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Emissão:"
+        },
+        {
+         "tipo": "sistema",
+         "x": 143.0,
+         "y": 9.8,
+         "w": 22.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "dd/mm/yyyy",
+         "branco_zero": false,
+         "sistema": "data"
+        },
+        {
+         "tipo": "sistema",
+         "x": 168.0,
+         "y": 9.8,
+         "w": 26.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "sistema": "pagina_desc"
+        },
+        {
+         "tipo": "linha",
+         "x": 0.0,
+         "y": 14.7,
+         "w": 194.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.6,
+         "cor": "#000000",
+         "dupla": true
+        },
+        {
+         "tipo": "texto",
+         "x": 0.0,
+         "y": 16.8,
+         "w": 64.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Cliente/Fornec."
+        },
+        {
+         "tipo": "texto",
+         "x": 65.0,
+         "y": 16.8,
+         "w": 18.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Documento"
+        },
+        {
+         "tipo": "texto",
+         "x": 84.0,
+         "y": 16.8,
+         "w": 7.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Série"
+        },
+        {
+         "tipo": "texto",
+         "x": 92.0,
+         "y": 16.8,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Emissão"
+        },
+        {
+         "tipo": "texto",
+         "x": 107.0,
+         "y": 16.8,
+         "w": 9.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Vend."
+        },
+        {
+         "tipo": "texto",
+         "x": 117.0,
+         "y": 16.8,
+         "w": 19.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Valor Bruto"
+        },
+        {
+         "tipo": "texto",
+         "x": 137.0,
+         "y": 16.8,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Desconto"
+        },
+        {
+         "tipo": "texto",
+         "x": 155.0,
+         "y": 16.8,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Despesa"
+        },
+        {
+         "tipo": "texto",
+         "x": 173.0,
+         "y": 16.8,
+         "w": 19.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Valor Líq."
+        },
+        {
+         "tipo": "linha",
+         "x": 0.0,
+         "y": 21.4,
+         "w": 194.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.6,
+         "cor": "#000000",
+         "dupla": true
+        }
+       ]
+      },
+      "detalhe": {
+       "altura": 4.4,
+       "visivel": true,
+       "dinamica": true,
+       "itens": [
+        {
+         "tipo": "campo",
+         "x": 0.0,
+         "y": 0.5,
+         "w": 64.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "CLIENTE_FORNEC",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 65.0,
+         "y": 0.5,
+         "w": 18.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "DOCUMENTO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 84.0,
+         "y": 0.5,
+         "w": 7.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "SERIE",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 92.0,
+         "y": 0.5,
+         "w": 14.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "dd/mm/yy",
+         "branco_zero": false,
+         "campo": "DATAEMISSAO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 107.0,
+         "y": 0.5,
+         "w": 9.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "campo": "VEND",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 117.0,
+         "y": 0.5,
+         "w": 19.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "VALORBRUTO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 137.0,
+         "y": 0.5,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "DESCONTO",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 155.0,
+         "y": 0.5,
+         "w": 17.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "DESPESA",
+         "visao": null,
+         "esticar": false
+        },
+        {
+         "tipo": "campo",
+         "x": 173.0,
+         "y": 0.5,
+         "w": 19.0,
+         "h": 3.6,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 7.0,
+          "n": false,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "campo": "VALORLIQUIDO",
+         "visao": null,
+         "esticar": false
+        }
+       ]
+      },
+      "sumario": {
+       "altura": 22.0,
+       "visivel": true,
+       "dinamica": true,
+       "itens": [
+        {
+         "tipo": "linha",
+         "x": 117.0,
+         "y": 0.8,
+         "w": 19.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "linha",
+         "x": 137.0,
+         "y": 0.8,
+         "w": 17.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "linha",
+         "x": 155.0,
+         "y": 0.8,
+         "w": 17.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "linha",
+         "x": 173.0,
+         "y": 0.8,
+         "w": 19.0,
+         "h": 1.0,
+         "nome": "",
+         "posicao": "topo",
+         "espessura": 0.5,
+         "cor": "#000000",
+         "dupla": false
+        },
+        {
+         "tipo": "texto",
+         "x": 55.0,
+         "y": 5.5,
+         "w": 30.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "TOTAL À VISTA:"
+        },
+        {
+         "tipo": "texto",
+         "x": 86.0,
+         "y": 5.5,
+         "w": 16.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Qtd. Mov.:"
+        },
+        {
+         "tipo": "variavel",
+         "x": 103.0,
+         "y": 5.5,
+         "w": 10.0,
+         "h": 3.8,
+         "nome": "VistaQtd",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'V' then\n    Value := Value + 1;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 117.0,
+         "y": 5.5,
+         "w": 19.0,
+         "h": 3.8,
+         "nome": "VistaBruto",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'V' then\n    Value := Value + Compras['VALORBRUTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 137.0,
+         "y": 5.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "VistaDesc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'V' then\n    Value := Value + Compras['DESCONTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 155.0,
+         "y": 5.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "VistaDesp",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'V' then\n    Value := Value + Compras['DESPESA'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 173.0,
+         "y": 5.5,
+         "w": 19.0,
+         "h": 3.8,
+         "nome": "VistaLiq",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'V' then\n    Value := Value + Compras['VALORLIQUIDO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "texto",
+         "x": 55.0,
+         "y": 10.5,
+         "w": 30.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "TOTAL À PRAZO:"
+        },
+        {
+         "tipo": "texto",
+         "x": 86.0,
+         "y": 10.5,
+         "w": 16.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Qtd. Mov.:"
+        },
+        {
+         "tipo": "variavel",
+         "x": 103.0,
+         "y": 10.5,
+         "w": 10.0,
+         "h": 3.8,
+         "nome": "PrazoQtd",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'P' then\n    Value := Value + 1;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 117.0,
+         "y": 10.5,
+         "w": 19.0,
+         "h": 3.8,
+         "nome": "PrazoBruto",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'P' then\n    Value := Value + Compras['VALORBRUTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 137.0,
+         "y": 10.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "PrazoDesc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'P' then\n    Value := Value + Compras['DESCONTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 155.0,
+         "y": 10.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "PrazoDesp",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'P' then\n    Value := Value + Compras['DESPESA'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 173.0,
+         "y": 10.5,
+         "w": 19.0,
+         "h": 3.8,
+         "nome": "PrazoLiq",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  if Compras['AVISTA'] = 'P' then\n    Value := Value + Compras['VALORLIQUIDO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "texto",
+         "x": 55.0,
+         "y": 15.5,
+         "w": 30.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "TOTAL GERAL:"
+        },
+        {
+         "tipo": "texto",
+         "x": 86.0,
+         "y": 15.5,
+         "w": 16.0,
+         "h": 3.8,
+         "nome": "",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": false,
+         "quebra": false,
+         "fundo": null,
+         "formato": "",
+         "branco_zero": false,
+         "texto": "Qtd. Mov.:"
+        },
+        {
+         "tipo": "variavel",
+         "x": 103.0,
+         "y": 15.5,
+         "w": 10.0,
+         "h": 3.8,
+         "nome": "GeralQtd",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "e",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "0",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + 1;\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 117.0,
+         "y": 15.5,
+         "w": 19.0,
+         "h": 3.8,
+         "nome": "GeralBruto",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Compras['VALORBRUTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 137.0,
+         "y": 15.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "GeralDesc",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Compras['DESCONTO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 155.0,
+         "y": 15.5,
+         "w": 17.0,
+         "h": 3.8,
+         "nome": "GeralDesp",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Compras['DESPESA'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        },
+        {
+         "tipo": "variavel",
+         "x": 173.0,
+         "y": 15.5,
+         "w": 19.0,
+         "h": 3.8,
+         "nome": "GeralLiq",
+         "fonte": {
+          "nome": "Arial",
+          "tam": 8.0,
+          "n": true,
+          "i": false,
+          "s": false,
+          "cor": "#000000"
+         },
+         "alin": "d",
+         "auto": true,
+         "quebra": false,
+         "fundo": null,
+         "formato": "#,0.00;-#,0.00",
+         "branco_zero": false,
+         "codigo": "begin\n  Value := Value + Compras['VALORLIQUIDO'];\nend;",
+         "tipo_dado": "numero",
+         "calc_tipo": "percurso",
+         "reset_tipo": "fim",
+         "calc_grupo": null,
+         "reset_grupo": null,
+         "ordem": 0
+        }
+       ]
+      },
+      "rodape": {
+       "altura": 0,
+       "visivel": true,
+       "dinamica": true,
+       "itens": []
+      }
+     },
+     "grupos": [],
+     "titulo_antes": true
+    },
+    "aliases": {}
+   }
+  },
+  {
+   "id": "pd-apuracao-icms",
+   "nome": "Apuração de ICMS (Livro Registro de Apuração)",
+   "pasta": "Relatórios padrões / Fiscais",
+   "modulo": "movimentos",
+   "alterado": "2026-10-27",
+   "antigo": false,
+   "lixeira": false,
+   "padrao_painel": true,
+   "parametros": [
+    {
+     "nome": "DATA_INICIAL",
+     "tipo": "data",
+     "rotulo": "Data inicial",
+     "padrao": "inicio_mes",
+     "obrigatorio": true,
+     "ajuda": ""
+    },
+    {
+     "nome": "DATA_FINAL",
+     "tipo": "data",
+     "rotulo": "Data final",
+     "padrao": "hoje",
+     "obrigatorio": true,
+     "ajuda": ""
+    },
+    {
+     "nome": "FILIAL",
+     "tipo": "numero",
+     "rotulo": "Filial",
+     "padrao": null,
+     "obrigatorio": false,
+     "ajuda": "vazio = todas as filiais",
+     "escolha": "filiais"
+    }
+   ],
+   "visoes": [
+    {
+     "nome": "Entradas",
+     "sql": "SELECT Y.GRUPO, Y.CST, Y.CFOP, Y.CST || ' - ' || Y.NATUREZA AS DESCRICAO,\n       Y.VALOR_CONTABIL, Y.BASE_CALCULO, Y.IMPOSTO_CREDITO, Y.ISENTAS_NAO_TRIB,\n       MAXVALUE(Y.VALOR_CONTABIL - Y.BASE_CALCULO - Y.ISENTAS_NAO_TRIB, 0) AS OUTRAS\nFROM (\nSELECT X.GRUPO, X.CST, X.CFOP, X.NATUREZA,\n       SUM(X.VALOR) AS VALOR_CONTABIL, SUM(X.BASE) AS BASE_CALCULO, SUM(X.ICMS) AS IMPOSTO_CREDITO,\n       SUM(CASE WHEN X.ISENTO = 1 AND X.ICMS = 0 THEN X.VALOR ELSE 0 END) AS ISENTAS_NAO_TRIB\nFROM (\n  SELECT TRIM(COALESCE(I.CST, '')) AS CST,\n         REPLACE(SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 5), '.', '') AS CFOP,\n         COALESCE(N.NOME, '') AS NATUREZA,\n         CASE SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) WHEN '1' THEN '1.0 - DO ESTADO'\n              WHEN '2' THEN '2.0 - DE OUTROS ESTADOS' ELSE '3.0 - DO EXTERIOR' END AS GRUPO,\n         CAST(COALESCE(I.VALORTOTALITEM, 0) + COALESCE(I.VALORFRETE, 0) + COALESCE(I.VALORDESP, 0)\n           + COALESCE((SELECT SUM(T2.VALOR) FROM TTRBMOV T2 WHERE T2.IDMOV = I.IDMOV AND T2.NSEQITMMOV = I.NSEQ\n                        AND T2.CODEMPRESA = I.CODEMPRESA AND T2.CODTRB IN ('IPI', 'ICMSST')), 0) AS DOUBLE PRECISION) AS VALOR,\n         CAST(CASE WHEN COALESCE(N.CREDITOICMS, 0) > 0 THEN COALESCE(T.BASEDECALCULO, 0) ELSE 0 END AS DOUBLE PRECISION) AS BASE,\n         CAST(CASE WHEN COALESCE(N.CREDITOICMS, 0) > 0 THEN COALESCE(T.VALOR, 0) ELSE 0 END AS DOUBLE PRECISION) AS ICMS,\n         CASE WHEN SUBSTRING(TRIM(COALESCE(I.CST, '')) FROM 2 FOR 2) IN ('30', '40', '41') THEN 1 ELSE 0 END AS ISENTO\n  FROM TMOVITENS I\n  JOIN TMOV M ON M.IDMOV = I.IDMOV AND M.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TNATUREZA N ON N.CODNAT = COALESCE(I.CODNAT, M.CODNAT) AND N.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TTRBMOV T ON T.IDMOV = I.IDMOV AND T.NSEQITMMOV = I.NSEQ AND T.CODEMPRESA = I.CODEMPRESA AND T.CODTRB = 'ICMS'\n  WHERE M.CODNAT IS NOT NULL\n    AND (M.STATUS IS NULL OR M.STATUS <> 'C')\n    AND M.DATAEMISSAO BETWEEN CAST(:DATA_INICIAL AS DATE) AND CAST(:DATA_FINAL AS DATE)\n    AND SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) IN ('1','2','3')\n    AND (CAST(:FILIAL AS INTEGER) IS NULL OR M.CODFILIAL = CAST(:FILIAL AS INTEGER))\n) X\nGROUP BY X.GRUPO, X.CST, X.CFOP, X.NATUREZA\n) Y\nORDER BY Y.GRUPO, Y.CST, Y.CFOP",
+     "mestre": null,
+     "ligacoes": []
+    },
+    {
+     "nome": "Saidas",
+     "sql": "SELECT Y.GRUPO, Y.CST, Y.CFOP, Y.CST || ' - ' || Y.NATUREZA AS DESCRICAO,\n       Y.VALOR_CONTABIL, Y.BASE_CALCULO, Y.IMPOSTO_DEBITO, Y.ISENTAS_NAO_TRIB,\n       MAXVALUE(Y.VALOR_CONTABIL - Y.BASE_CALCULO - Y.ISENTAS_NAO_TRIB, 0) AS OUTRAS\nFROM (\nSELECT X.GRUPO, X.CST, X.CFOP, X.NATUREZA,\n       SUM(X.VALOR) AS VALOR_CONTABIL, SUM(X.BASE) AS BASE_CALCULO, SUM(X.ICMS) AS IMPOSTO_DEBITO,\n       SUM(CASE WHEN X.ISENTO = 1 AND X.ICMS = 0 THEN X.VALOR ELSE 0 END) AS ISENTAS_NAO_TRIB\nFROM (\n  SELECT TRIM(COALESCE(I.CST, '')) AS CST,\n         REPLACE(SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 5), '.', '') AS CFOP,\n         COALESCE(N.NOME, '') AS NATUREZA,\n         CASE SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) WHEN '5' THEN '5.0 - PARA O ESTADO'\n              WHEN '6' THEN '6.0 - PARA OUTROS ESTADOS' ELSE '7.0 - PARA O EXTERIOR' END AS GRUPO,\n         CAST(COALESCE(I.VALORTOTALITEM, 0) + COALESCE(I.VALORFRETE, 0) + COALESCE(I.VALORDESP, 0)\n           + COALESCE((SELECT SUM(T2.VALOR) FROM TTRBMOV T2 WHERE T2.IDMOV = I.IDMOV AND T2.NSEQITMMOV = I.NSEQ\n                        AND T2.CODEMPRESA = I.CODEMPRESA AND T2.CODTRB IN ('IPI', 'ICMSST')), 0) AS DOUBLE PRECISION) AS VALOR,\n         CAST(CASE WHEN 1 = 1 THEN COALESCE(T.BASEDECALCULO, 0) ELSE 0 END AS DOUBLE PRECISION) AS BASE,\n         CAST(CASE WHEN 1 = 1 THEN COALESCE(T.VALOR, 0) ELSE 0 END AS DOUBLE PRECISION) AS ICMS,\n         CASE WHEN SUBSTRING(TRIM(COALESCE(I.CST, '')) FROM 2 FOR 2) IN ('30', '40', '41') THEN 1 ELSE 0 END AS ISENTO\n  FROM TMOVITENS I\n  JOIN TMOV M ON M.IDMOV = I.IDMOV AND M.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TNATUREZA N ON N.CODNAT = COALESCE(I.CODNAT, M.CODNAT) AND N.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TTRBMOV T ON T.IDMOV = I.IDMOV AND T.NSEQITMMOV = I.NSEQ AND T.CODEMPRESA = I.CODEMPRESA AND T.CODTRB = 'ICMS'\n  WHERE M.CODNAT IS NOT NULL\n    AND (M.STATUS IS NULL OR M.STATUS <> 'C')\n    AND M.DATAEMISSAO BETWEEN CAST(:DATA_INICIAL AS DATE) AND CAST(:DATA_FINAL AS DATE)\n    AND SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) IN ('5','6','7')\n    AND (CAST(:FILIAL AS INTEGER) IS NULL OR M.CODFILIAL = CAST(:FILIAL AS INTEGER))\n) X\nGROUP BY X.GRUPO, X.CST, X.CFOP, X.NATUREZA\n) Y\nORDER BY Y.GRUPO, Y.CST, Y.CFOP",
+     "mestre": null,
+     "ligacoes": []
+    },
+    {
+     "nome": "Apuracao",
+     "sql": "SELECT D.DEBITOS, C.CREDITOS, D.DEBITOS - C.CREDITOS AS SALDO_DEVEDOR,\n       CAST(:DATA_INICIAL AS DATE) AS PERIODO_INI, CAST(:DATA_FINAL AS DATE) AS PERIODO_FIM\nFROM (SELECT CAST(COALESCE(SUM(S.ICMS), 0) AS DOUBLE PRECISION) AS DEBITOS FROM (\n  SELECT TRIM(COALESCE(I.CST, '')) AS CST,\n         REPLACE(SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 5), '.', '') AS CFOP,\n         COALESCE(N.NOME, '') AS NATUREZA,\n         CASE SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) WHEN '5' THEN '5.0 - PARA O ESTADO'\n              WHEN '6' THEN '6.0 - PARA OUTROS ESTADOS' ELSE '7.0 - PARA O EXTERIOR' END AS GRUPO,\n         CAST(COALESCE(I.VALORTOTALITEM, 0) + COALESCE(I.VALORFRETE, 0) + COALESCE(I.VALORDESP, 0)\n           + COALESCE((SELECT SUM(T2.VALOR) FROM TTRBMOV T2 WHERE T2.IDMOV = I.IDMOV AND T2.NSEQITMMOV = I.NSEQ\n                        AND T2.CODEMPRESA = I.CODEMPRESA AND T2.CODTRB IN ('IPI', 'ICMSST')), 0) AS DOUBLE PRECISION) AS VALOR,\n         CAST(CASE WHEN 1 = 1 THEN COALESCE(T.BASEDECALCULO, 0) ELSE 0 END AS DOUBLE PRECISION) AS BASE,\n         CAST(CASE WHEN 1 = 1 THEN COALESCE(T.VALOR, 0) ELSE 0 END AS DOUBLE PRECISION) AS ICMS,\n         CASE WHEN SUBSTRING(TRIM(COALESCE(I.CST, '')) FROM 2 FOR 2) IN ('30', '40', '41') THEN 1 ELSE 0 END AS ISENTO\n  FROM TMOVITENS I\n  JOIN TMOV M ON M.IDMOV = I.IDMOV AND M.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TNATUREZA N ON N.CODNAT = COALESCE(I.CODNAT, M.CODNAT) AND N.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TTRBMOV T ON T.IDMOV = I.IDMOV AND T.NSEQITMMOV = I.NSEQ AND T.CODEMPRESA = I.CODEMPRESA AND T.CODTRB = 'ICMS'\n  WHERE M.CODNAT IS NOT NULL\n    AND (M.STATUS IS NULL OR M.STATUS <> 'C')\n    AND M.DATAEMISSAO BETWEEN CAST(:DATA_INICIAL AS DATE) AND CAST(:DATA_FINAL AS DATE)\n    AND SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) IN ('5','6','7')\n    AND (CAST(:FILIAL AS INTEGER) IS NULL OR M.CODFILIAL = CAST(:FILIAL AS INTEGER))\n) S) D\nCROSS JOIN (SELECT CAST(COALESCE(SUM(E.ICMS), 0) AS DOUBLE PRECISION) AS CREDITOS FROM (\n  SELECT TRIM(COALESCE(I.CST, '')) AS CST,\n         REPLACE(SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 5), '.', '') AS CFOP,\n         COALESCE(N.NOME, '') AS NATUREZA,\n         CASE SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) WHEN '1' THEN '1.0 - DO ESTADO'\n              WHEN '2' THEN '2.0 - DE OUTROS ESTADOS' ELSE '3.0 - DO EXTERIOR' END AS GRUPO,\n         CAST(COALESCE(I.VALORTOTALITEM, 0) + COALESCE(I.VALORFRETE, 0) + COALESCE(I.VALORDESP, 0)\n           + COALESCE((SELECT SUM(T2.VALOR) FROM TTRBMOV T2 WHERE T2.IDMOV = I.IDMOV AND T2.NSEQITMMOV = I.NSEQ\n                        AND T2.CODEMPRESA = I.CODEMPRESA AND T2.CODTRB IN ('IPI', 'ICMSST')), 0) AS DOUBLE PRECISION) AS VALOR,\n         CAST(CASE WHEN COALESCE(N.CREDITOICMS, 0) > 0 THEN COALESCE(T.BASEDECALCULO, 0) ELSE 0 END AS DOUBLE PRECISION) AS BASE,\n         CAST(CASE WHEN COALESCE(N.CREDITOICMS, 0) > 0 THEN COALESCE(T.VALOR, 0) ELSE 0 END AS DOUBLE PRECISION) AS ICMS,\n         CASE WHEN SUBSTRING(TRIM(COALESCE(I.CST, '')) FROM 2 FOR 2) IN ('30', '40', '41') THEN 1 ELSE 0 END AS ISENTO\n  FROM TMOVITENS I\n  JOIN TMOV M ON M.IDMOV = I.IDMOV AND M.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TNATUREZA N ON N.CODNAT = COALESCE(I.CODNAT, M.CODNAT) AND N.CODEMPRESA = I.CODEMPRESA\n  LEFT JOIN TTRBMOV T ON T.IDMOV = I.IDMOV AND T.NSEQITMMOV = I.NSEQ AND T.CODEMPRESA = I.CODEMPRESA AND T.CODTRB = 'ICMS'\n  WHERE M.CODNAT IS NOT NULL\n    AND (M.STATUS IS NULL OR M.STATUS <> 'C')\n    AND M.DATAEMISSAO BETWEEN CAST(:DATA_INICIAL AS DATE) AND CAST(:DATA_FINAL AS DATE)\n    AND SUBSTRING(COALESCE(I.CODNAT, M.CODNAT) FROM 1 FOR 1) IN ('1','2','3')\n    AND (CAST(:FILIAL AS INTEGER) IS NULL OR M.CODFILIAL = CAST(:FILIAL AS INTEGER))\n) E) C",
+     "mestre": null,
+     "ligacoes": []
+    }
+   ],
+   "layout_padrao": {
+    "visoes": {
+     "Entradas": {
+      "oculta": false,
+      "titulo": "Entradas",
+      "colunas": [
+       {
+        "campo": "GRUPO",
+        "rotulo": "Grupo",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "DESCRICAO",
+        "rotulo": "CST - Descrição",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "CFOP",
+        "rotulo": "CFOP",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "CST",
+        "rotulo": "CST",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "VALOR_CONTABIL",
+        "rotulo": "Valor contábil",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "BASE_CALCULO",
+        "rotulo": "Base de cálculo",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "IMPOSTO_CREDITO",
+        "rotulo": "Imposto creditado",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "ISENTAS_NAO_TRIB",
+        "rotulo": "Isentas ou não tributadas",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "OUTRAS",
+        "rotulo": "Outras",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       }
+      ],
+      "ordenar": [
+       {
+        "campo": "CST",
+        "dir": "asc"
+       },
+       {
+        "campo": "CFOP",
+        "dir": "asc"
+       }
+      ],
+      "agrupar": [
+       "GRUPO"
+      ],
+      "grafico": {
+       "tipo": "nenhum",
+       "x": "",
+       "y": "",
+       "agregacao": "soma",
+       "por_mes": false,
+       "titulo": ""
+      },
+      "indicadores": [
+       {
+        "rotulo": "Valor contábil",
+        "campo": "VALOR_CONTABIL",
+        "agregacao": "soma",
+        "formato": "moeda"
+       },
+       {
+        "rotulo": "Imposto creditado",
+        "campo": "IMPOSTO_CREDITO",
+        "agregacao": "soma",
+        "formato": "moeda"
+       }
+      ]
+     },
+     "Saidas": {
+      "oculta": false,
+      "titulo": "Saídas",
+      "colunas": [
+       {
+        "campo": "GRUPO",
+        "rotulo": "Grupo",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "DESCRICAO",
+        "rotulo": "CST - Descrição",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "CFOP",
+        "rotulo": "CFOP",
+        "visivel": true,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "CST",
+        "rotulo": "CST",
+        "visivel": false,
+        "formato": "auto",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "VALOR_CONTABIL",
+        "rotulo": "Valor contábil",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "BASE_CALCULO",
+        "rotulo": "Base de cálculo",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "IMPOSTO_DEBITO",
+        "rotulo": "Imposto debitado",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "ISENTAS_NAO_TRIB",
+        "rotulo": "Isentas ou não tributadas",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       },
+       {
+        "campo": "OUTRAS",
+        "rotulo": "Outras",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "soma",
+        "abaixo": false
+       }
+      ],
+      "ordenar": [
+       {
+        "campo": "CST",
+        "dir": "asc"
+       },
+       {
+        "campo": "CFOP",
+        "dir": "asc"
+       }
+      ],
+      "agrupar": [
+       "GRUPO"
+      ],
+      "grafico": {
+       "tipo": "nenhum",
+       "x": "",
+       "y": "",
+       "agregacao": "soma",
+       "por_mes": false,
+       "titulo": ""
+      },
+      "indicadores": [
+       {
+        "rotulo": "Valor contábil",
+        "campo": "VALOR_CONTABIL",
+        "agregacao": "soma",
+        "formato": "moeda"
+       },
+       {
+        "rotulo": "Imposto debitado",
+        "campo": "IMPOSTO_DEBITO",
+        "agregacao": "soma",
+        "formato": "moeda"
+       }
+      ]
+     },
+     "Apuracao": {
+      "oculta": false,
+      "titulo": "Apuração do saldo",
+      "colunas": [
+       {
+        "campo": "DEBITOS",
+        "rotulo": "Débitos (saídas)",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "CREDITOS",
+        "rotulo": "Créditos (entradas)",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "SALDO_DEVEDOR",
+        "rotulo": "Saldo devedor (credor se negativo)",
+        "visivel": true,
+        "formato": "moeda",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "PERIODO_INI",
+        "rotulo": "Período de",
+        "visivel": false,
+        "formato": "data",
+        "total": "nenhum",
+        "abaixo": false
+       },
+       {
+        "campo": "PERIODO_FIM",
+        "rotulo": "Período até",
+        "visivel": false,
+        "formato": "data",
+        "total": "nenhum",
+        "abaixo": false
+       }
+      ],
+      "ordenar": [],
+      "agrupar": [],
+      "grafico": {
+       "tipo": "nenhum",
+       "x": "",
+       "y": "",
+       "agregacao": "soma",
+       "por_mes": false,
+       "titulo": ""
+      },
+      "indicadores": []
+     }
+    },
+    "pdf": {
+     "orientacao": "paisagem"
+    }
+   }
+  }
+ ]
+}

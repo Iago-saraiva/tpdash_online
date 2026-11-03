@@ -1,0 +1,17 @@
+; Configuração do TP DASH ADMIN (site separado, só da Tecnoplan).
+; Na primeira execução este arquivo é copiado para admin.ini com uma chave secreta própria.
+[admin]
+; endereço e porta deste site (o TP DASH online continua na porta dele)
+host = 0.0.0.0
+porta = 8071
+; pasta do site TP DASH online (o ADMIN usa o mesmo banco de empresas e usuários)
+pasta_site = ../site
+; chave que assina o login deste site (gerada sozinha; não compartilhe)
+chave_secreta = GERAR-AUTOMATICO
+; minutos sem uso até pedir o login de novo
+sessao_minutos = 60
+; com HTTPS (hospedado): cookie_seguro = sim. Atrás de nginx/proxy: atras_de_proxy = sim
+cookie_seguro = nao
+atras_de_proxy = nao
+; IPs ou faixas que podem abrir o ADMIN (vazio = todos). Ex.: permitir = 192.168.24.0/24, 200.100.50.10
+permitir =

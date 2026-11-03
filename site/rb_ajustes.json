@@ -1,0 +1,244 @@
+{
+ "_leia": "Ajustes feitos no painel sobre relatórios do ReportBuilder. São reaplicados a cada sincronização (mesmo que o relatório mude no ReportBuilder).",
+ "604-17": {
+  "descricao": "Relatório de tributos: visão consolidada por documento (BC/VLR de cada tributo) e layout igual ao do RB",
+  "inserir_visoes": [
+   {
+    "posicao": 0,
+    "visao": {
+     "nome": "Tributos por documento",
+     "sql": "SELECT TMOVNFSE_1.NUMERONFSE, TMOV_1.NUMEROMOV,\n       FCFO_1.CODCFO || ' - ' || COALESCE(NULLIF(TRIM(FCFO_1.NOMEFANTASIA), ''), FCFO_1.NOME) AS FORNECEDOR,\n       TMOV_1.DATAEMISSAO, TMOV_1.DATAMOVIMENTO AS DATA_ENTRADA, TMOV_1.VALORLIQUIDO AS VALOR, TMOV_1.VALORBRUTO,\n       (SELECT SUM(T.BASEDECALCULO) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'ISSRET') AS BC_ISSRET,\n       (SELECT SUM(T.VALOR) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'ISSRET') AS VLR_ISSRET,\n       (SELECT SUM(T.BASEDECALCULO) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'ISS') AS BC_ISS,\n       (SELECT SUM(T.VALOR) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'ISS') AS VLR_ISS,\n       (SELECT SUM(T.BASEDECALCULO) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'INSSRET') AS BC_INSSRET,\n       (SELECT SUM(T.VALOR) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'INSSRET') AS VLR_INSSRET,\n       (SELECT SUM(T.BASEDECALCULO) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'IRPJRET') AS BC_IRPJRET,\n       (SELECT SUM(T.VALOR) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'IRPJRET') AS VLR_IRPJRET,\n       (SELECT SUM(T.BASEDECALCULO) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'PIS') AS BC_PIS,\n       (SELECT SUM(T.VALOR) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'PIS') AS VLR_PIS,\n       (SELECT SUM(T.BASEDECALCULO) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'COFINS') AS BC_COFINS,\n       (SELECT SUM(T.VALOR) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'COFINS') AS VLR_COFINS,\n       (SELECT SUM(T.BASEDECALCULO) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'CSLL') AS BC_CSLL,\n       (SELECT SUM(T.VALOR) FROM TTRBMOV T WHERE T.IDMOV = TMOV_1.IDMOV AND T.CODEMPRESA = TMOV_1.CODEMPRESA AND T.CODTRB = 'CSLL') AS VLR_CSLL\nFROM TMOV TMOV_1 LEFT OUTER JOIN FCFO FCFO_1 ON\n     (FCFO_1.CODEMPRESA = TMOV_1.CODEMPRESA)\n      AND (FCFO_1.CODCFO = TMOV_1.CODCFO)\n      LEFT OUTER JOIN TMOVNFSE TMOVNFSE_1 ON\n     (TMOVNFSE_1.IDMOV = TMOV_1.IDMOV)\nWHERE ( (CAST(:CODIGO_TIPO_MOVIMENTO AS VARCHAR(2000)) IS NULL OR POSITION(',' || TRIM(TMOV_1.CODTMV) || ',' IN ',' || REPLACE(CAST(:CODIGO_TIPO_MOVIMENTO AS VARCHAR(2000)), ' ', '') || ',') > 0) ) AND ( TMOV_1.STATUS <> 'C' ) AND ( (CAST(:DATA_MOVIMENTO_DE AS DATE) IS NULL OR TMOV_1.DATAMOVIMENTO >= CAST(:DATA_MOVIMENTO_DE AS DATE)) AND (CAST(:DATA_MOVIMENTO_ATE AS DATE) IS NULL OR TMOV_1.DATAMOVIMENTO < CAST(:DATA_MOVIMENTO_ATE AS DATE) + 1) ) AND ( (CAST(:DATA_DE_EMISSAO_DE AS DATE) IS NULL OR TMOV_1.DATAEMISSAO >= CAST(:DATA_DE_EMISSAO_DE AS DATE)) AND (CAST(:DATA_DE_EMISSAO_ATE AS DATE) IS NULL OR TMOV_1.DATAEMISSAO < CAST(:DATA_DE_EMISSAO_ATE AS DATE) + 1) ) AND ( (CAST(:STATUSNFSE AS DOUBLE PRECISION) IS NULL OR TMOVNFSE_1.STATUSNFSE <> CAST(:STATUSNFSE AS DOUBLE PRECISION)) )\nORDER BY TMOV_1.DATAEMISSAO, TMOVNFSE_1.NUMERONFSE",
+     "mestre": null,
+     "ligacoes": [],
+     "criada_painel": true
+    }
+   }
+  ],
+  "layout_padrao": {
+   "visoes": {
+    "Tributos por documento": {
+     "titulo": "Tributos por documento",
+     "oculta": false,
+     "colunas": [
+      {
+       "campo": "NUMERONFSE",
+       "rotulo": "Nº NFSE",
+       "visivel": true,
+       "formato": "auto",
+       "total": "nenhum",
+       "abaixo": false
+      },
+      {
+       "campo": "NUMEROMOV",
+       "rotulo": "Documento",
+       "visivel": false,
+       "formato": "auto",
+       "total": "nenhum",
+       "abaixo": false
+      },
+      {
+       "campo": "FORNECEDOR",
+       "rotulo": "Fornecedor",
+       "visivel": true,
+       "formato": "auto",
+       "total": "nenhum",
+       "abaixo": false
+      },
+      {
+       "campo": "DATAEMISSAO",
+       "rotulo": "Data emissão",
+       "formato": "data",
+       "visivel": true,
+       "total": "nenhum",
+       "abaixo": false
+      },
+      {
+       "campo": "DATA_ENTRADA",
+       "rotulo": "Data entrada",
+       "formato": "data",
+       "visivel": true,
+       "total": "nenhum",
+       "abaixo": false
+      },
+      {
+       "campo": "VALOR",
+       "rotulo": "Valor",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VALORBRUTO",
+       "rotulo": "Valor bruto",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "BC_ISSRET",
+       "rotulo": "BC ISSRET",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VLR_ISSRET",
+       "rotulo": "VLR ISSRET",
+       "formato": "moeda",
+       "total": "soma",
+       "abaixo": true,
+       "visivel": true
+      },
+      {
+       "campo": "BC_ISS",
+       "rotulo": "BC ISS",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VLR_ISS",
+       "rotulo": "VLR ISS",
+       "formato": "moeda",
+       "total": "soma",
+       "abaixo": true,
+       "visivel": true
+      },
+      {
+       "campo": "BC_INSSRET",
+       "rotulo": "BC INSSRET",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VLR_INSSRET",
+       "rotulo": "VLR INSSRET",
+       "formato": "moeda",
+       "total": "soma",
+       "abaixo": true,
+       "visivel": true
+      },
+      {
+       "campo": "BC_IRPJRET",
+       "rotulo": "BC IRPJRET",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VLR_IRPJRET",
+       "rotulo": "VLR IRPJRET",
+       "formato": "moeda",
+       "total": "soma",
+       "abaixo": true,
+       "visivel": true
+      },
+      {
+       "campo": "BC_PIS",
+       "rotulo": "BC PIS",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VLR_PIS",
+       "rotulo": "VLR PIS",
+       "formato": "moeda",
+       "total": "soma",
+       "abaixo": true,
+       "visivel": true
+      },
+      {
+       "campo": "BC_COFINS",
+       "rotulo": "BC COFINS",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VLR_COFINS",
+       "rotulo": "VLR COFINS",
+       "formato": "moeda",
+       "total": "soma",
+       "abaixo": true,
+       "visivel": true
+      },
+      {
+       "campo": "BC_CSLL",
+       "rotulo": "BC CSLL",
+       "formato": "moeda",
+       "total": "soma",
+       "visivel": true,
+       "abaixo": false
+      },
+      {
+       "campo": "VLR_CSLL",
+       "rotulo": "VLR CSLL",
+       "formato": "moeda",
+       "total": "soma",
+       "abaixo": true,
+       "visivel": true
+      }
+     ],
+     "ordenar": [],
+     "agrupar": [],
+     "grafico": {
+      "tipo": "nenhum"
+     },
+     "indicadores": []
+    },
+    "Movimento": {
+     "oculta": true
+    },
+    "ISSRET": {
+     "oculta": true
+    },
+    "ISS": {
+     "oculta": true
+    },
+    "INSSRET": {
+     "oculta": true
+    },
+    "IRPJRET": {
+     "oculta": true
+    },
+    "COFINS": {
+     "oculta": true
+    },
+    "PIS": {
+     "oculta": true
+    },
+    "CSLL": {
+     "oculta": true
+    }
+   },
+   "pdf": {
+    "orientacao": "paisagem"
+   }
+  }
+ },
+ "643-17": {
+  "descricao": "Vendas Geral NFSe: sem as visões de tributos e sem o filtro de data de movimento",
+  "manter_visoes": [
+   "Movimento"
+  ],
+  "remover_parametros": [
+   "DATA_MOVIMENTO_DE",
+   "DATA_MOVIMENTO_ATE"
+  ],
+  "remover_trechos": {
+   "Movimento": [
+    " AND ( (CAST(:DATA_MOVIMENTO_DE AS DATE) IS NULL OR TMOV_1.DATAMOVIMENTO >= CAST(:DATA_MOVIMENTO_DE AS DATE)) AND (CAST(:DATA_MOVIMENTO_ATE AS DATE) IS NULL OR TMOV_1.DATAMOVIMENTO < CAST(:DATA_MOVIMENTO_ATE AS DATE) + 1) )"
+   ]
+  }
+ }
+}
