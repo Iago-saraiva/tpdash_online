@@ -22,7 +22,12 @@ sys.path.insert(1, os.path.join(AQUI, "admin"))
 from app import app as site            # noqa: E402  (site TP DASH online)
 
 ADMIN_HOSTS = {h.strip().lower() for h in os.environ.get("TPDASH_ADMIN_HOST", "").split(",") if h.strip()}
-ADMIN_CAMINHO = "/" + os.environ.get("TPDASH_ADMIN_CAMINHO", "").strip().strip("/")
+def _limpo(txt):
+    """Tira espaços e caracteres invisíveis (comuns quando o valor é colado de outro lugar)."""
+    return "".join(c for c in (txt or "") if c.isprintable() and not c.isspace())
+
+
+ADMIN_CAMINHO = "/" + _limpo(os.environ.get("TPDASH_ADMIN_CAMINHO", "")).strip("/").lower()
 if ADMIN_CAMINHO == "/":
     ADMIN_CAMINHO = ""
 if ADMIN_CAMINHO and len(ADMIN_CAMINHO) < 8:
@@ -43,11 +48,16 @@ def aplicacao(environ, start_response):
         if ADMIN_HOSTS and _host(environ) in ADMIN_HOSTS:
             return admin(environ, start_response)
         caminho = environ.get("PATH_INFO", "")
-        if ADMIN_CAMINHO and (caminho == ADMIN_CAMINHO or caminho.startswith(ADMIN_CAMINHO + "/")):
+        minusculo = caminho.lower()
+        if ADMIN_CAMINHO and (minusculo == ADMIN_CAMINHO or minusculo.startswith(ADMIN_CAMINHO + "/")):
             environ = dict(environ)
             environ["SCRIPT_NAME"] = environ.get("SCRIPT_NAME", "") + ADMIN_CAMINHO
             environ["PATH_INFO"] = caminho[len(ADMIN_CAMINHO):] or "/"
             return admin(environ, start_response)
+        if minusculo.startswith("/adm"):
+            # diagnóstico: aparece no Log do Render quando alguém tenta abrir o ADMIN por um caminho que não bate
+            print(f"ADMIN nao abriu: pedido={caminho!r} host={environ.get('HTTP_HOST')!r} esperado={ADMIN_CAMINHO!r}",
+                  flush=True)
     return site(environ, start_response)
 
 
@@ -58,7 +68,7 @@ if __name__ == "__main__":
     if admin is None:
         print("TP DASH ADMIN desligado: defina TPDASH_ADMIN_HOST ou TPDASH_ADMIN_CAMINHO.", flush=True)
     else:
-        print("TP DASH ADMIN em: " + ", ".join(sorted(ADMIN_HOSTS) + ([ADMIN_CAMINHO] if ADMIN_CAMINHO else [])), flush=True)
+        print("TP DASH ADMIN em: " + ", ".join(sorted(ADMIN_HOSTS) + ([repr(ADMIN_CAMINHO)] if ADMIN_CAMINHO else [])), flush=True)
     # cada agente conectado segura um thread esperando pedidos: threads de sobra
     serve(aplicacao, host="0.0.0.0", port=porta, threads=int(os.environ.get("TPDASH_THREADS", "120")),
           ident="tpdash", channel_timeout=300)
