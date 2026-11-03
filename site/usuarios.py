@@ -501,6 +501,17 @@ def gravar_info_agente(eid, dados):
         con.execute("UPDATE agentes_info SET dados = ? WHERE empresa_id = ?", (json.dumps(dados, ensure_ascii=False), eid))
 
 
+def gravar_sinc_agente(eid, resumo):
+    """Resumo da última rodada de sincronização do agente (mostrado no TP DASH ADMIN)."""
+    with _con() as con:
+        _tabela_agentes(con)
+        r = con.execute("SELECT dados FROM agentes_info WHERE empresa_id = ?", (eid,)).fetchone()
+        dados = (_json(r["dados"]) if r else None) or {}
+        dados["sincronizacao"] = resumo
+        con.execute("INSERT OR IGNORE INTO agentes_info (empresa_id, dados) VALUES (?, '{}')", (eid,))
+        con.execute("UPDATE agentes_info SET dados = ? WHERE empresa_id = ?", (json.dumps(dados, ensure_ascii=False), eid))
+
+
 def contar_consulta(eid, ok, segundos):
     """Uma consulta feita ao banco da empresa pelo agente: conta por dia, para o TP DASH ADMIN."""
     import datetime as _dt

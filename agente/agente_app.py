@@ -6,6 +6,7 @@ TPDashAgente.exe --servico   roda o agente em segundo plano (é assim que o Wind
 A configuração (site, chaves e bancos) fica em dados\\agente.dat, cifrada pelo Windows. Não há config.ini.
 """
 import os
+import re
 import queue
 import subprocess
 import sys
@@ -374,14 +375,21 @@ def abrir_janela():
         ttk.Button(topo, text="Sair", command=lambda: (estado.update(dados=None), tela_login())).pack(side="right")
         ttk.Button(topo, text="Trocar senha", command=trocar_senha).pack(side="right", padx=6)
 
-        fs = ttk.LabelFrame(corpo, text="Site TP DASH", padding=10)
-        fs.pack(fill="x", pady=(12, 8))
+        abas = ttk.Notebook(corpo)
+        abas.pack(fill="both", expand=True, pady=(10, 0))
+        aba_emp = ttk.Frame(abas, padding=8)
+        aba_sinc = ttk.Frame(abas, padding=8)
+        abas.add(aba_emp, text="Empresas")
+        abas.add(aba_sinc, text="Sincronização")
+
+        fs = ttk.LabelFrame(aba_emp, text="Site TP DASH", padding=10)
+        fs.pack(fill="x", pady=(4, 8))
         fs.columnconfigure(1, weight=1)
         var_site, _ = campo(fs, "Endereço", 0, largura=60, valor=d.get("site", ""))
         ttk.Label(fs, text="ex.: https://dash.suaempresa.com.br  (teste: http://localhost:8070 ou http://NOME-OU-IP-DO-SITE:8070)",
                   foreground="#667085").grid(row=1, column=1, sticky="w")
 
-        fe = ttk.LabelFrame(corpo, text="Empresas atendidas por este agente", padding=10)
+        fe = ttk.LabelFrame(aba_emp, text="Empresas atendidas por este agente", padding=10)
         fe.pack(fill="both", expand=True)
         arv = ttk.Treeview(fe, columns=("nome", "banco", "situacao"), show="headings", height=6)
         for c, t, w in (("nome", "Empresa", 200), ("banco", "Banco", 300), ("situacao", "Último teste", 220)):
@@ -440,6 +448,8 @@ def abrir_janela():
         ttk.Button(bt, text="Testar todas", command=testar_todas).pack(fill="x", pady=(12, 2))
         arv.bind("<Double-1>", lambda _e: selecionada() and dialogo_empresa(selecionada(), gravar_empresa))
 
+        montar_sincronizacao(aba_sinc, d)
+
         fv = ttk.LabelFrame(corpo, text="Funcionamento", padding=10)
         fv.pack(fill="x", pady=(8, 0))
         lb_estado = ttk.Label(fv, text="Situação: verificando...")
@@ -480,6 +490,99 @@ def abrir_janela():
         ttk.Button(fv, text="Salvar e iniciar", command=salvar_e_iniciar).pack(side="right")
         recarregar()
         atualizar_estado()
+
+    # ------------------------------------------------------------------ aba Sincronização
+    def montar_sincronizacao(pai, d):
+        import sincronizar
+        cfg = sincronizar._validar({**sincronizar.PADRAO, **(d.get("sincronizacao") or {})})
+        fc = ttk.LabelFrame(pai, text="Consultas ao banco para atualizar o site", padding=10)
+        fc.pack(fill="x")
+        v_ativa = tk.BooleanVar(value=cfg["ativa"])
+        ttk.Checkbutton(fc, text="Manter uma cópia dos dados no site (respostas mais rápidas no TP DASH)",
+                        variable=v_ativa).grid(row=0, column=0, columnspan=4, sticky="w")
+        ttk.Label(fc, text="Consultar o banco a cada").grid(row=1, column=0, sticky="w", pady=(8, 4))
+        opcoes = [f"{m} minutos" if m < 60 else (f"{m // 60} hora" if m == 60 else f"{m // 60} horas")
+                  for m in sincronizar.INTERVALOS]
+        v_int = tk.StringVar(value=opcoes[sincronizar.INTERVALOS.index(cfg["intervalo_min"])]
+                             if cfg["intervalo_min"] in sincronizar.INTERVALOS else f"{cfg['intervalo_min']} minutos")
+        ttk.Combobox(fc, textvariable=v_int, values=opcoes, state="readonly", width=14).grid(row=1, column=1, sticky="w", pady=(8, 4))
+        ttk.Label(fc, text="Não consultar entre").grid(row=2, column=0, sticky="w", pady=4)
+        v_ini = tk.StringVar(value=cfg["pausa_inicio"])
+        v_fim = tk.StringVar(value=cfg["pausa_fim"])
+        lp = ttk.Frame(fc)
+        lp.grid(row=2, column=1, columnspan=3, sticky="w")
+        ttk.Entry(lp, textvariable=v_ini, width=7).pack(side="left")
+        ttk.Label(lp, text=" e ").pack(side="left")
+        ttk.Entry(lp, textvariable=v_fim, width=7).pack(side="left")
+        ttk.Label(lp, text="  (ex.: 23:00 e 06:00, horário do backup; vazio = sempre)", foreground="#667085").pack(side="left")
+        ttk.Label(fc, text="Na primeira vez o agente envia todas as tabelas usadas pelo TP DASH (pode levar alguns minutos). "
+                           "Depois envia só o que foi incluído, alterado ou apagado.", foreground="#667085",
+                  wraplength=640).grid(row=3, column=0, columnspan=4, sticky="w", pady=(8, 0))
+
+        def salvar_sinc():
+            ini, fim = v_ini.get().strip(), v_fim.get().strip()
+            for v in (ini, fim):
+                if v and not re.match(r"^([01]?\d|2[0-3]):[0-5]\d$", v):
+                    messagebox.showerror(TITULO, f"Horário inválido: {v}. Use HH:MM, por exemplo 23:00.")
+                    return
+            if bool(ini) != bool(fim):
+                messagebox.showerror(TITULO, "Preencha os dois horários da pausa, ou deixe os dois vazios.")
+                return
+            m = sincronizar.INTERVALOS[opcoes.index(v_int.get())] if v_int.get() in opcoes else cfg["intervalo_min"]
+            d["sincronizacao"] = {"ativa": bool(v_ativa.get()), "intervalo_min": m, "pausa_inicio": ini, "pausa_fim": fim}
+            gravar()
+            messagebox.showinfo(TITULO, "Sincronização salva. O agente em funcionamento usa a nova configuração em até 1 minuto.")
+
+        ttk.Button(fc, text="Salvar", command=salvar_sinc).grid(row=1, column=3, sticky="e", padx=(20, 0))
+        fc.columnconfigure(2, weight=1)
+
+        fl = ttk.LabelFrame(pai, text="Situação por empresa", padding=10)
+        fl.pack(fill="both", expand=True, pady=(8, 0))
+        cols = (("nome", "Empresa", 150), ("carga", "Carga inicial", 170), ("ultima", "Última rodada", 190),
+                ("mud", "Mudanças", 170), ("prox", "Próxima", 110))
+        arv = ttk.Treeview(fl, columns=[c[0] for c in cols], show="headings", height=5)
+        for c, t, w in cols:
+            arv.heading(c, text=t)
+            arv.column(c, width=w, anchor="w")
+        arv.pack(fill="both", expand=True, side="left")
+        lb_erro = ttk.Label(pai, text="", style="Aviso.TLabel", wraplength=680)
+        lb_erro.pack(fill="x", pady=(4, 0))
+        bt = ttk.Frame(fl)
+        bt.pack(side="left", fill="y", padx=(10, 0))
+
+        def atualizar(agendar=False):
+            if not arv.winfo_exists():
+                return
+            sel = arv.selection()
+            arv.delete(*arv.get_children())
+            erros = []
+            for e in d["empresas"]:
+                est = sincronizar.ler_estado(e["id"])
+                ult = f"{est['ultima']} ({est.get('duracao_s', 0):.0f} s)" if est.get("ultima") else "ainda não rodou"
+                mud = (f"{est.get('inseridas', 0)} novas, {est.get('alteradas', 0)} alt., {est.get('apagadas', 0)} apag."
+                       if est.get("ultima") else "")
+                carga = "refazer na próxima" if est.get("refazer") else (est.get("carga_inicial") or "pendente")
+                arv.insert("", "end", iid=e["id"], values=(e.get("nome") or e["id"], carga, ult, mud, est.get("proxima") or ""))
+                if est.get("erro"):
+                    erros.append(f"{e.get('nome') or e['id']}: {est['erro']}")
+            if sel and arv.exists(sel[0]):
+                arv.selection_set(sel[0])
+            lb_erro.config(text="\n".join(erros))
+            if agendar:
+                pai.after(10000, lambda: atualizar(True))
+
+        def refazer():
+            s_ = arv.selection()
+            if not s_:
+                messagebox.showinfo(TITULO, "Escolha a empresa na lista.")
+                return
+            if messagebox.askyesno(TITULO, "Enviar de novo todas as tabelas desta empresa para o site na próxima rodada?"):
+                sincronizar.pedir_carga_completa(s_[0])
+                atualizar()
+
+        ttk.Button(bt, text="Atualizar", command=atualizar).pack(fill="x", pady=2)
+        ttk.Button(bt, text="Refazer carga", command=refazer).pack(fill="x", pady=2)
+        atualizar(True)
 
     def gravar():
         d = estado["dados"]

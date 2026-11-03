@@ -28,8 +28,9 @@ from logging.handlers import RotatingFileHandler
 import config
 import cofre
 import db
+import sincronizar
 
-VERSAO = "2.0.0"
+VERSAO = "2.1.0"
 CONSULTAS_AO_MESMO_TEMPO = 8
 PASTA = config.BASE_DIR
 
@@ -170,7 +171,7 @@ class BancoComErro:
     def _falha(self, *a, **k):
         raise db.ErroBanco(self.erro)
 
-    consultar = consultar_blob = colunas = testar = _falha
+    consultar = consultar_blob = colunas = testar = percorrer = _falha
 
 
 class Agente:
@@ -196,6 +197,7 @@ class Agente:
         self._local = threading.local()      # uma conexão aberta (keep-alive) por thread
         self.pool = ThreadPoolExecutor(max_workers=CONSULTAS_AO_MESMO_TEMPO, thread_name_prefix="consulta")
         self.parar = threading.Event()
+        self.sinc = sincronizar.Sincronizador(self)
 
     # -------------------------------------------------------------- HTTP
     def _conexao(self, timeout):
@@ -256,9 +258,17 @@ class Agente:
         except Exception as e:  # noqa: BLE001 - avisa o site que o banco está com problema, mas conecta
             descricao = f"ERRO NO BANCO: {e}"
             log.warning("[%s] %s", self.rotulo, descricao)
+        import platform
+        import socket
+        try:
+            sinc = self.sinc.resumo()
+        except Exception:  # noqa: BLE001
+            sinc = None
         r = self._chamar("POST", "/agente/ola", {
             "versao": VERSAO, "modo": self.cfg_banco["modo"], "empresa": self.cfg_banco["empresa"], "descricao": descricao,
-            "status_movimento": self.cfg["status_movimento"], "status_lancamento": self.cfg["status_lancamento"]})
+            "status_movimento": self.cfg["status_movimento"], "status_lancamento": self.cfg["status_lancamento"],
+            "maquina": socket.gethostname(), "sistema": f"{platform.system()} {platform.release()}".strip(),
+            "sincronizacao": sinc})
         self.nome_no_site = r.get("empresa")
         log.info("[%s] Conectado ao site como %s (%s)", self.rotulo, r.get("empresa"), descricao)
         return r.get("espera", 25)
@@ -419,6 +429,7 @@ def main():
         return
     log.info("TP DASH Agente %s iniciado. Site: %s. Empresas: %s", VERSAO, endereco, ", ".join(a.rotulo for a in agentes))
     threads = [threading.Thread(target=a.rodar, name=f"empresa-{a.rotulo}", daemon=True) for a in agentes]
+    threads += [threading.Thread(target=a.sinc.laco, name=f"sinc-{a.rotulo}", daemon=True) for a in agentes]
     for t in threads:
         t.start()
     try:

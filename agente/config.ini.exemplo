@@ -30,3 +30,12 @@ chave =
 ; Mais uma empresa neste mesmo agente: uma secao [nuvem:ID] para cada [banco:ID]
 ; [nuvem:poligonal]
 ; chave =
+
+[sincronizacao]
+; copia das tabelas no site: carga inicial e, depois, so o que mudou
+ativa = sim
+; minutos entre as consultas ao banco
+intervalo_min = 15
+; horario sem consultas (ex.: backup da noite); vazio = sempre
+pausa_inicio =
+pausa_fim =

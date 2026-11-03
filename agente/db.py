@@ -16,6 +16,9 @@ class ErroBanco(Exception):
     pass
 
 
+db_erro_passa = (ErroBanco, GeneratorExit)   # erros que percorrer() repassa como estão
+
+
 def _normalizar(v):
     if v is None:
         return None
@@ -202,6 +205,33 @@ class BancoFirebird:
                     continue
                 raise ErroBanco(msg) from e
 
+    def percorrer(self, sql, params=(), lote=2000):
+        """Lê uma consulta grande aos poucos (sem pôr tudo na memória): rende (colunas, linhas) de `lote` em `lote`.
+        Usado pela sincronização. Uma transação só, somente leitura, do começo ao fim."""
+        from firebird.driver import Isolation, TraAccessMode, tpb
+
+        try:
+            with self._usar() as con:
+                tm = con.transaction_manager(tpb(Isolation.READ_COMMITTED_RECORD_VERSION, access_mode=TraAccessMode.READ))
+                tm.begin()
+                try:
+                    cur = tm.cursor()
+                    cur.execute(sql, tuple(params))
+                    colunas = [d[0].strip() for d in cur.description]
+                    while True:
+                        linhas = cur.fetchmany(lote)
+                        if not linhas:
+                            break
+                        yield colunas, [[_normalizar(v) for v in r] for r in linhas]
+                    cur.close()
+                finally:
+                    tm.rollback()
+                    tm.close()
+        except db_erro_passa:
+            raise
+        except Exception as e:  # noqa: BLE001
+            raise ErroBanco(str(e)) from e
+
     def consultar_blob(self, sql, params=()):
         """Como consultar(), mas devolve BLOBs binários como bytes (usado para ler os modelos do ReportBuilder)."""
         from firebird.driver import Isolation, TraAccessMode, tpb
@@ -322,6 +352,23 @@ class BancoDemo:
             con = sqlite3.connect(f"file:{self.caminho}?mode=ro", uri=True)
             try:
                 return [d[0].upper() for d in con.execute(sql, conv).description]
+            finally:
+                con.close()
+        except sqlite3.Error as e:
+            raise ErroBanco(str(e)) from e
+
+    def percorrer(self, sql, params=(), lote=2000):
+        conv = [p.isoformat() if isinstance(p, (dt.date, dt.datetime)) else p for p in params]
+        try:
+            con = sqlite3.connect(f"file:{self.caminho}?mode=ro", uri=True)
+            try:
+                cur = con.execute(sql, conv)
+                colunas = [d[0].upper() for d in cur.description]
+                while True:
+                    linhas = cur.fetchmany(lote)
+                    if not linhas:
+                        break
+                    yield colunas, [[_normalizar(v) for v in r] for r in linhas]
             finally:
                 con.close()
         except sqlite3.Error as e:

@@ -99,6 +99,24 @@ class _ConexaoPG:
             return _Resultado(cur, r[0] if r else None)
         return _Resultado(cur)
 
+    def executemany_cru(self, sql, seq):
+        """SQL já escrito para o PostgreSQL (com %s), muitas linhas de uma vez. Usado pela cópia das tabelas."""
+        with self.con.cursor() as cur:
+            cur.executemany(sql, seq)
+
+    def copiar_e_mesclar(self, tabela, colunas, linhas):
+        """Grava muitas linhas (inclui ou substitui pela coluna _k) com COPY: rápido mesmo com o banco longe."""
+        cols = ", ".join(f'"{c}"' for c in colunas)
+        sets = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in colunas[1:])
+        with self.con.cursor() as cur:
+            cur.execute(f'CREATE TEMP TABLE IF NOT EXISTS _carga (LIKE "{tabela}" INCLUDING DEFAULTS) ON COMMIT DROP')
+            with cur.copy(f'COPY _carga ({cols}) FROM STDIN') as cp:
+                for linha in linhas:
+                    cp.write_row(linha)
+            cur.execute(f'INSERT INTO "{tabela}" ({cols}) SELECT DISTINCT ON (_k) {cols} FROM _carga '
+                        f'ON CONFLICT (_k) DO UPDATE SET {sets}')
+            cur.execute("DROP TABLE _carga")
+
     def __enter__(self):
         return self
 

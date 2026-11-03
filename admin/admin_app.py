@@ -73,6 +73,7 @@ def _da_nuvem():
 CFG = _carregar()
 sys.path.insert(0, CFG["pasta_site"])
 import usuarios  # noqa: E402  (módulo do site: mesmo banco de usuários e empresas)
+import copia  # noqa: E402  (cópia das tabelas sincronizadas pelos agentes)
 
 usuarios.iniciar(site=True)
 ONLINE_SEGUNDOS = 75          # o site grava o "visto" do agente a cada ~20-45 s
@@ -260,6 +261,12 @@ def _empresas_com_estado():
     est = usuarios.estado_agentes()
     infos = usuarios.info_agentes()
     consultas = usuarios.consultas_agentes(7)
+    copias = {}
+    for t in copia.tabelas():
+        c = copias.setdefault(t["empresa_id"], {"tabelas": 0, "linhas": 0, "atualizada": 0})
+        c["tabelas"] += 1
+        c["linhas"] += t["linhas"] or 0
+        c["atualizada"] = max(c["atualizada"], t["atualizada"] or 0)
     hoje = dt.date.today().isoformat()
     agora = time.time()
     lista = usuarios.listar_empresas()
@@ -282,6 +289,14 @@ def _empresas_com_estado():
             "sistema": i.get("sistema") or "", "sincronizacao": i.get("sincronizacao"),
             "conectado": dt.datetime.fromtimestamp(i["conectado"]).strftime("%d/%m/%Y %H:%M:%S") if i.get("conectado") else None}
         dias = consultas.get(e["id"]) or []
+        c = copias.get(e["id"])
+        if c:
+            try:
+                c["bytes"] = copia.tamanho(e["id"])
+            except Exception:  # noqa: BLE001
+                c["bytes"] = None
+            c["atualizada"] = dt.datetime.fromtimestamp(c["atualizada"]).strftime("%d/%m/%Y %H:%M:%S") if c["atualizada"] else None
+        e["copia"] = c
         e["consultas"] = {"hoje": next((d for d in dias if d["dia"] == hoje), None), "dias": dias,
                           "semana": sum(d["n"] for d in dias)}
     return lista

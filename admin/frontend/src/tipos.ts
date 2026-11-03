@@ -8,7 +8,10 @@ export interface Filial {
 export interface Sincronizacao {
   intervalo_min?: number; ultima?: string; proxima?: string; duracao_s?: number;
   inseridas?: number; alteradas?: number; apagadas?: number; carga_inicial?: string; erro?: string;
+  ativa?: boolean; pausa?: string; linhas?: number; tabelas?: number;
 }
+
+export interface Copia { tabelas: number; linhas: number; atualizada: string | null; bytes: number | null }
 
 export interface InfoAgente {
   modo: string; codempresa: number | string | null; maquina: string; sistema: string;
@@ -33,6 +36,7 @@ export interface Empresa {
   filiais_lidas: string | null;
   ip: string;
   agente: InfoAgente;
+  copia: Copia | null;
   consultas: { hoje: ConsultasDia | null; dias: ConsultasDia[]; semana: number };
 }
 

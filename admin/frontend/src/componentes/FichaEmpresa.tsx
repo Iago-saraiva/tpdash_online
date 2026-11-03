@@ -18,6 +18,8 @@ const endereco = (f: Filial) =>
 const cidade = (f: Filial) => [f.cidade, f.uf].filter(Boolean).join("/");
 const inativa = (f: Filial) => ["1", "S", "T"].includes(String(f.inativo || "").trim().toUpperCase());
 const dia = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+const n = (v?: number) => (v || 0).toLocaleString("pt-BR");
+const mb = (b: number) => b >= 1048576 ? `${(b / 1048576).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB` : `${Math.ceil(b / 1024)} kB`;
 const modo = (m: string) => ({ firebird: "Firebird", demo: "Demonstração" } as Record<string, string>)[m] || m || "—";
 
 function Linha({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
@@ -56,7 +58,7 @@ export default function FichaEmpresa({ empresa: e, agir }: Props) {
           <h3>Consultas ao banco</h3>
           <Linha rotulo="Hoje" valor={hoje ? `${hoje.n} consulta${hoje.n === 1 ? "" : "s"}${hoje.erros ? ` · ${hoje.erros} com erro` : ""}` : "nenhuma"} />
           <Linha rotulo="Tempo médio hoje" valor={media ? `${media} s` : null} />
-          <Linha rotulo="Últimos 7 dias" valor={`${e.consultas?.semana || 0} consultas`} />
+          <Linha rotulo="Últimos 7 dias" valor={`${e.consultas?.semana || 0} consulta${(e.consultas?.semana || 0) === 1 ? "" : "s"}`} />
           {(e.consultas?.dias?.length ?? 0) > 0 && (
             <div className="ficha-dias">
               {e.consultas.dias.slice().reverse().map((d) => (
@@ -73,12 +75,17 @@ export default function FichaEmpresa({ empresa: e, agir }: Props) {
           <h3>Sincronização</h3>
           {!sinc && <p className="nota">Ainda não ativada nesta versão do agente. Quando estiver, aparecem aqui o intervalo programado, a última e a próxima rodada e o que mudou.</p>}
           {sinc && <>
-            <Linha rotulo="Intervalo programado" valor={sinc.intervalo_min ? `a cada ${sinc.intervalo_min} min` : null} />
-            <Linha rotulo="Carga inicial" valor={sinc.carga_inicial} />
+            <Linha rotulo="Intervalo programado" valor={sinc.ativa === false ? "desligada no agente" : sinc.intervalo_min ? `a cada ${sinc.intervalo_min} min` : null} />
+            {sinc.pausa && <Linha rotulo="Não roda entre" valor={sinc.pausa} />}
+            <Linha rotulo="Carga inicial" valor={sinc.carga_inicial || (sinc.ultima ? null : "ainda não começou")} />
             <Linha rotulo="Última rodada" valor={sinc.ultima ? `${sinc.ultima}${sinc.duracao_s != null ? ` · ${sinc.duracao_s} s` : ""}` : null} />
-            <Linha rotulo="Mudanças na última" valor={sinc.ultima ? `${sinc.inseridas || 0} novas · ${sinc.alteradas || 0} alteradas · ${sinc.apagadas || 0} apagadas` : null} />
+            <Linha rotulo="Mudanças na última" valor={sinc.ultima ? `${n(sinc.inseridas)} novas · ${n(sinc.alteradas)} alteradas · ${n(sinc.apagadas)} apagadas` : null} />
             <Linha rotulo="Próxima rodada" valor={sinc.proxima} />
             {sinc.erro && <p className="nota">Último erro: {sinc.erro}</p>}
+          </>}
+          {e.copia && <>
+            <Linha rotulo="Cópia no site" valor={`${e.copia.tabelas} tabelas · ${n(e.copia.linhas)} linhas${e.copia.bytes != null ? ` · ${mb(e.copia.bytes)}` : ""}`} />
+            <Linha rotulo="Cópia atualizada em" valor={e.copia.atualizada} />
           </>}
         </section>
       </div>

@@ -13,6 +13,7 @@ from flask import (Flask, Response, abort, g, jsonify, redirect, render_template
 import assistente
 import bancos
 import config
+import copia
 import db
 import exportar
 import layout
@@ -1639,6 +1640,25 @@ def agente_pedidos():
         return jsonify(erro="Envie /agente/ola primeiro."), 409
     _atualizar_estado(eid, ag)
     return jsonify(pedidos=ag.proximos(nuvem.ESPERA_PEDIDOS))
+
+
+@app.route("/agente/sinc", methods=["POST"])
+def agente_sinc():
+    """Sincronização: pacotes de linhas (novas/alteradas/apagadas) de uma tabela, ou o resumo da rodada."""
+    eid = _agente_autenticado()
+    if not eid:
+        return jsonify(erro="Chave do agente inválida ou empresa desativada."), 401
+    try:
+        d = _corpo_json()
+    except (ValueError, OSError):
+        return jsonify(erro="Pacote inválido."), 400
+    if "resumo" in d:
+        usuarios.gravar_sinc_agente(eid, d.get("resumo") if isinstance(d.get("resumo"), dict) else None)
+        return jsonify(ok=True)
+    try:
+        return jsonify(copia.receber(eid, d))
+    except copia.ErroCopia as e:
+        return jsonify(erro=str(e)), 400
 
 
 @app.route("/agente/resposta", methods=["POST"])
