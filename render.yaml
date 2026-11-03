@@ -1,27 +1,23 @@
 # Render Blueprint do TP DASH online (site + TP DASH ADMIN no mesmo serviço).
+# PLANO FREE = SÓ PARA TESTE: sem disco, empresas, usuários e chaves SÃO APAGADOS a cada reinício
+# ou nova versão. Para uso de verdade: plan: starter + o bloco "disk" (ver README).
 # No Render: New > Blueprint > escolha este repositório. Depois preencha as variáveis marcadas "sync: false".
 services:
   - type: web
     name: tpdash-online
     runtime: python
-    plan: starter              # precisa de plano pago: o plano grátis não tem disco e apaga os dados
+    plan: free                 # teste: o plano free não tem disco (os dados somem ao reiniciar)
     region: virginia
     numInstances: 1            # um processo só: os pedidos aos agentes ficam em memória
     buildCommand: pip install -r requirements.txt
     startCommand: python servidor_nuvem.py
     healthCheckPath: /saude
     autoDeploy: true
-    disk:
-      name: tpdash-dados
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: TPDASH_NUVEM
         value: "1"
-      - key: TPDASH_DADOS
-        value: /var/data
       - key: TPDASH_CHAVE_SECRETA
         generateValue: true
       - key: TPDASH_ADMIN_CHAVE_SECRETA
