@@ -1,0 +1,11 @@
+{
+  "src/main.tsx": {
+    "file": "assets/main-DijBqif3.js",
+    "name": "main",
+    "src": "src/main.tsx",
+    "isEntry": true,
+    "css": [
+      "assets/main-D_9OemWG.css"
+    ]
+  }
+}

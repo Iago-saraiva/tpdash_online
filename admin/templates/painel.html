@@ -3,76 +3,19 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="csrf" content="{{ csrf_token() }}">
   <title>TP DASH ADMIN</title>
   <link rel="icon" href="{{ base() }}/favicon.ico">
   <link rel="stylesheet" href="{{ base() }}/static/app.css"><link rel="stylesheet" href="{{ base() }}/static/admin.css">
+  {% for c in css %}<link rel="stylesheet" href="{{ base() }}/static/{{ c }}">{% endfor %}
 </head>
-<body data-base="{{ base() }}">
+<body>
 <header class="adm-topo">
   <img src="{{ base() }}/static/logo-tpdash-preto.svg" width="30" height="30" alt="" class="logo-tpdash">
   <h1>TP DASH ADMIN</h1><span class="selo">Tecnoplan</span>
   <span class="esp"></span>
   <span class="quem">{{ usuario.nome }}</span> · <a href="{{ base() }}/trocar-senha">Trocar senha</a> · <a href="{{ base() }}/sair">Sair</a>
 </header>
-<main class="conteudo">
-<p class="nota" style="margin:0">Cadastro de todas as empresas clientes do TP DASH online: chaves dos agentes, filiais e usuários de cada empresa. Os usuários de uma empresa só enxergam os dados dela no TP DASH.</p>
-<div class="grade">
-  <div class="cartao c8" style="align-self:start"><div class="cartao-cab"><h2>Empresas <span class="sub">· clique em uma empresa para ver filiais e usuários</span></h2></div>
-    <div class="tabela-wrap"><table class="dados" id="tabela-empresas"><thead><tr>
-      <th>Empresa</th><th>Situação</th><th>Agente</th><th>Filiais</th><th>Usuários</th><th></th></tr></thead><tbody></tbody></table></div>
-    <div id="chave-nova" class="aviso" hidden style="margin-top:12px"></div>
-  </div>
-  <div class="cartao c4" style="align-self:start">
-    <div class="cartao-cab"><h2>Nova empresa</h2></div>
-    <form id="form-empresa" autocomplete="off" style="display:flex;flex-direction:column;gap:10px">
-      <label class="adm-campo">Identificador<input name="id" class="campo" required placeholder="ex.: metodo" pattern="[a-z0-9][a-z0-9_\-]{1,29}"></label>
-      <label class="adm-campo">Nome<input name="nome" class="campo" required placeholder="ex.: Método Construções Elétricas"></label>
-      <label class="check"><input type="checkbox" name="ativa" checked> Ativa</label>
-      <label class="check"><input type="checkbox" name="gerar" checked> Gerar a chave do agente agora</label>
-      <p class="nota" style="margin:0">O identificador não muda depois. Desativar uma empresa bloqueia o acesso dos usuários e do agente dela.</p>
-      <div><button class="btn primario">Salvar empresa</button></div>
-    </form>
-  </div>
-
-  <div class="cartao c4" style="align-self:start">
-    <div class="cartao-cab"><h2 id="titulo-filiais">Filiais</h2><button class="btn pequeno" type="button" id="atualizar-filiais" hidden>Ler de novo</button></div>
-    <div id="lista-filiais" class="nota">Escolha uma empresa na lista.</div>
-  </div>
-  <div class="cartao c8" style="align-self:start">
-    <div class="cartao-cab"><h2 id="titulo-usuarios">Usuários de todas as empresas</h2>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="filtro-empresa" class="campo" style="min-width:180px"><option value="">Todas as empresas</option></select>
-        <button class="btn pequeno primario" type="button" id="novo-usuario">Novo usuário</button>
-      </div>
-    </div>
-    <div class="tabela-wrap"><table class="dados" id="tabela-usuarios"><thead><tr>
-      <th>Login</th><th>Nome</th><th>Empresa</th><th>Perfil</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead><tbody></tbody></table></div>
-  </div>
-
-  <div class="cartao c12" id="cartao-usuario" hidden>
-    <div class="cartao-cab"><h2 id="titulo-form">Novo usuário</h2></div>
-    <form id="form-usuario" autocomplete="off" style="display:flex;flex-direction:column;gap:12px">
-      <input type="hidden" name="id">
-      <div class="form-grade">
-        <label>Empresa do usuário<select name="empresa" class="campo" required></select></label>
-        <label>Login<input name="login" class="campo" required></label>
-        <label>Nome<input name="nome" class="campo" required></label>
-        <label>Senha<input name="senha" type="password" class="campo" autocomplete="new-password" placeholder="Senha inicial"></label>
-      </div>
-      <div style="display:flex;gap:18px;flex-wrap:wrap">
-        <label class="check"><input type="checkbox" name="admin"> Administrador da empresa</label>
-        <label class="check"><input type="checkbox" name="ativo" checked> Ativo</label>
-      </div>
-      <div><div class="gtick" style="font-size:12px;margin-bottom:6px">Módulos liberados (o administrador vê todos)</div>
-        <div class="form-grade" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px">
-          {% for k, v in modulos.items() %}<label class="check"><input type="checkbox" name="modulos" value="{{ k }}"> {{ v }}</label>{% endfor %}
-        </div></div>
-      <p class="nota" style="margin:0">O usuário é cadastrado na empresa escolhida acima, troca a senha na primeira entrada e só enxerga os dados dela. Relatórios e tipos de movimento de cada usuário são ajustados na Administração do TP DASH, dentro da empresa. Se mudar o usuário de empresa, essas escolhas voltam para "todos".</p>
-      <div style="display:flex;gap:8px"><button class="btn primario">Salvar usuário</button><button class="btn" type="button" id="cancelar-usuario">Cancelar</button></div>
-    </form>
-  </div>
-</div>
-</main>
-<script src="{{ base() }}/static/admin.js"></script>
+<main class="conteudo" id="raiz" data-base="{{ base() }}" data-token="{{ csrf_token() }}"></main>
+<noscript><p style="padding:24px">O TP DASH ADMIN precisa de JavaScript ligado no navegador.</p></noscript>
+<script type="module" src="{{ base() }}/static/{{ js }}"></script>
 </body></html>

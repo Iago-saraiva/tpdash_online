@@ -15,6 +15,12 @@ import time
 
 from flask import Flask, Response, abort, g, jsonify, redirect, render_template, request, send_from_directory, session
 
+import mimetypes
+
+# no Windows o tipo do .js às vezes vem errado do registro e o navegador recusa o script do React
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+
 AQUI = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(AQUI, "admin.ini")
 
@@ -234,10 +240,19 @@ def trocar_senha():
 
 
 # ------------------------------------------------------------------ página
+def _arquivos_react():
+    """Arquivos gerados pelo build do React (admin/frontend -> admin/static/app). Lidos do manifest do Vite."""
+    import json
+    with open(os.path.join(AQUI, "static", "app", ".vite", "manifest.json"), encoding="utf-8") as f:
+        entrada = json.load(f)["src/main.tsx"]
+    return "app/" + entrada["file"], ["app/" + c for c in entrada.get("css", [])]
+
+
 @app.route("/")
 @exige
 def inicio():
-    return render_template("painel.html", usuario=g.usuario, modulos=usuarios.MODULOS)
+    js, css = _arquivos_react()
+    return render_template("painel.html", usuario=g.usuario, js=js, css=css)
 
 
 # ------------------------------------------------------------------ API

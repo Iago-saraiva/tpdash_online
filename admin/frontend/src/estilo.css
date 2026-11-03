@@ -1,0 +1,17 @@
+/* Complementa o app.css do TP DASH (cores, cartões e tabelas vêm de lá). */
+.adm-acoes { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; min-width: 150px; }
+.adm-campo { display: flex; flex-direction: column; gap: 4px; }
+.adm-linha { cursor: pointer; }
+.adm-linha.escolhida { background: var(--superficie-2); }
+.adm-chave { display: flex; flex-direction: column; gap: 6px; }
+.adm-chave code { user-select: all; word-break: break-all; font-size: 12.5px; }
+.adm-busca { min-width: 160px; }
+.adm-avisos { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 20; max-width: min(420px, calc(100vw - 32px)); }
+.adm-avisos .aviso { box-shadow: var(--sombra); margin: 0; }
+.adm-vazio { color: var(--texto-2); padding: 10px 0; }
+.adm-mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+.adm-resumo { display: flex; gap: 12px; flex-wrap: wrap; }
+.adm-resumo .cartao { flex: 1; min-width: 150px; padding: 12px 16px; }
+.adm-resumo .num { font-size: 22px; font-weight: 600; }
+.adm-resumo .rot { font-size: 12px; color: var(--texto-2); }
+@media (max-width: 900px) { .grade > .cartao { grid-column: span 12 !important; } }
