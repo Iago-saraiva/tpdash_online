@@ -2559,10 +2559,12 @@
       const sg = s.seguranca || {};
       const box = el("div", "aviso " + (sg.https ? "atencao" : "erro"));
       box.style.marginTop = "8px";
-      box.textContent = sg.https
+      box.textContent = sg.https && sg.site
+        ? "Conexão criptografada (HTTPS) ativa."
+        : sg.https
         ? `Conexão criptografada (HTTPS) ativa. Certificado SHA-256: ${sg.certificado_sha256 || "-"}. Celulares: abra /certificado.cer para instalar.` +
           (sg.ip_restrito ? " Acesso limitado aos IPs de [servidor] permitir." : "")
-        : "";
+        : "Conexão SEM criptografia (HTTP): senhas e dados passam abertos pela rede. " + (sg.site ? "Abra o site pelo endereço https://." : "Ative https = sim no config.ini e rode proteger_instalacao.bat (veja o LEIA-ME).");
       $("#status-banco").closest(".aviso").after(box);
       if (sg.enderecos && sg.enderecos.length) {
         const rede = el("div", "aviso");

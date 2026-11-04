@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS agentes_estado (
     empresa_id TEXT PRIMARY KEY, visto DOUBLE PRECISION, versao TEXT, descricao TEXT, ip TEXT,
     filiais TEXT, filiais_quando DOUBLE PRECISION, filiais_erro TEXT);
 CREATE TABLE IF NOT EXISTS agentes_info (empresa_id TEXT PRIMARY KEY, dados TEXT);
+CREATE TABLE IF NOT EXISTS arquivos_site (caminho TEXT PRIMARY KEY, conteudo TEXT, atualizado DOUBLE PRECISION);
 CREATE TABLE IF NOT EXISTS agentes_consultas (
     empresa_id TEXT NOT NULL, dia TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, erros INTEGER NOT NULL DEFAULT 0,
     segundos DOUBLE PRECISION NOT NULL DEFAULT 0, PRIMARY KEY (empresa_id, dia));

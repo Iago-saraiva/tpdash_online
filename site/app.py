@@ -693,7 +693,8 @@ def erro_banco(e):
 @exige()
 def api_status():
     try:
-        seg = {"https": CFG["https"], "ip_restrito": bool(CFG["permitir"])}
+        # no Render o HTTPS é feito pelo próprio Render (o painel recebe a conexão já decifrada)
+        seg = {"https": request.is_secure if SITE else CFG["https"], "ip_restrito": bool(CFG["permitir"]), "site": bool(SITE)}
         if g.usuario.get("admin") and not SITE:
             import mdns
             seg["enderecos"] = _enderecos()
@@ -1424,6 +1425,71 @@ def _rb_mudou(bid=None):
     relatorios_rb.recarregar(bid)
 
 
+# No site (Render), os arquivos do ReportBuilder de cada empresa (dados\bancos\<empresa>\rb_*.json) somem a cada
+# reinício. Por isso cada gravação vai também para o banco do site, e ao iniciar o site eles são recriados de lá.
+if SITE:
+    import os as _os
+
+    def _espelhar_rb(caminho, texto):
+        try:
+            rel = _os.path.relpath(caminho, config.DADOS_DIR).replace("\\", "/")
+            if not rel.startswith(".."):
+                usuarios.guardar_arquivo_site(rel, texto)
+        except Exception:  # noqa: BLE001 - o arquivo local já foi gravado; o espelho é uma segurança a mais
+            app.logger.exception("Não consegui guardar %s no banco do site", caminho)
+
+    def _restaurar_rb():
+        n = 0
+        for rel, texto in usuarios.arquivos_site():
+            destino = _os.path.normpath(_os.path.join(config.DADOS_DIR, rel))
+            if not destino.startswith(_os.path.normpath(config.DADOS_DIR) + _os.sep) or _os.path.exists(destino):
+                continue
+            if rel.endswith("rb_sync.json"):      # uma leitura que estava em andamento parou com o reinício
+                try:
+                    st = json.loads(texto)
+                    if st.get("andamento"):
+                        st["andamento"] = False
+                        texto = json.dumps(st, ensure_ascii=False)
+                except ValueError:
+                    pass
+            _os.makedirs(_os.path.dirname(destino), exist_ok=True)
+            with open(destino, "w", encoding="utf-8") as f:
+                f.write(texto)
+            n += 1
+        if n:
+            print(f"ReportBuilder: {n} arquivo(s) recuperado(s) do banco do site.", flush=True)
+
+    try:
+        _restaurar_rb()
+    except Exception:  # noqa: BLE001
+        app.logger.exception("Não consegui recuperar os arquivos do ReportBuilder do banco do site")
+    rb_sync.espelho = _espelhar_rb
+
+_RB_AUTO = {}             # empresa -> quando a leitura automática do ReportBuilder foi tentada
+
+
+def _rb_auto(eid):
+    """Site: se a empresa ainda não tem os relatórios do ReportBuilder lidos, lê assim que o agente conectar."""
+    import os
+    if not SITE or time.time() - _RB_AUTO.get(eid, 0) < 1800:
+        return
+    _RB_AUTO[eid] = time.time()
+    if os.path.exists(rb_sync._caminhos(eid)[0]):
+        return
+
+    def rodar():
+        try:
+            r = rb_sync.sincronizar(banco(eid), False, eid)
+            if not r.get("ocupado"):
+                _rb_mudou(eid)
+                usuarios.registrar("sistema", "ReportBuilder sincronizado",
+                                   f"{eid}: leitura automática, {r.get('total', 0)} relatório(s)")
+        except Exception:  # noqa: BLE001 - o erro fica gravado no estado da sincronização
+            pass
+    import threading
+    threading.Thread(target=rodar, daemon=True, name=f"rb-auto-{eid}").start()
+
+
 @app.route("/api/rb/sync", methods=["GET", "POST"])
 @exige(admin=True)
 def api_rb_sync():
@@ -1577,6 +1643,7 @@ def agente_ola():
     usuarios.gravar_estado_agente(eid, ag.visto, ag.versao, ag.info.get("descricao"), ag.ip)
     _GRAVADO[eid] = ag.visto
     usuarios.pedir_filiais(eid)                      # lê as filiais logo que o agente começar a buscar pedidos
+    _rb_auto(eid)                                    # relatórios do ReportBuilder ainda não lidos (ex.: site reiniciou)
     return jsonify(ok=True, empresa=usuarios.empresa(eid)["nome"], espera=nuvem.ESPERA_PEDIDOS)
 
 

@@ -430,12 +430,18 @@ def _ler(caminho, padrao):
         return padrao
 
 
+espelho = None      # site: função (caminho, texto) que guarda uma cópia do arquivo no banco do site
+
+
 def _gravar(caminho, dados):
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
     tmp = caminho + ".tmp"
+    texto = json.dumps(dados, ensure_ascii=False)
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(dados, f, ensure_ascii=False)
+        f.write(texto)
     os.replace(tmp, caminho)
+    if espelho:
+        espelho(caminho, texto)
 
 
 def estado(bid="principal"):

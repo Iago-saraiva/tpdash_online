@@ -3,6 +3,7 @@ import datetime as dt
 import json
 import os
 import sqlite3
+import time
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -491,6 +492,25 @@ def _tabela_agentes(con):
     con.execute("""CREATE TABLE IF NOT EXISTS agentes_consultas (
         empresa_id TEXT NOT NULL, dia TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, erros INTEGER NOT NULL DEFAULT 0,
         segundos REAL NOT NULL DEFAULT 0, PRIMARY KEY (empresa_id, dia))""")
+
+
+def _tabela_arquivos(con):
+    con.execute("CREATE TABLE IF NOT EXISTS arquivos_site (caminho TEXT PRIMARY KEY, conteudo TEXT, atualizado REAL)")
+
+
+def guardar_arquivo_site(caminho, texto):
+    """Cópia de um arquivo da pasta dados (ex.: catálogo do ReportBuilder de uma empresa) no banco do site."""
+    with _con() as con:
+        _tabela_arquivos(con)
+        con.execute("INSERT OR IGNORE INTO arquivos_site (caminho, conteudo, atualizado) VALUES (?, '', 0)", (caminho,))
+        con.execute("UPDATE arquivos_site SET conteudo = ?, atualizado = ? WHERE caminho = ?", (texto, time.time(), caminho))
+
+
+def arquivos_site():
+    """[(caminho, texto)] guardados por guardar_arquivo_site."""
+    with _con() as con:
+        _tabela_arquivos(con)
+        return [(r[0], r[1]) for r in con.execute("SELECT caminho, conteudo FROM arquivos_site")]
 
 
 def gravar_info_agente(eid, dados):
