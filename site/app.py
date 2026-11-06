@@ -14,6 +14,7 @@ import assistente
 import bancos
 import config
 import copia
+import copia_leitura
 import db
 import exportar
 import layout
@@ -126,10 +127,24 @@ def banco(bid=None):
     bid = bid or _bid()
     if SITE:
         C(bid)                                   # confere se a empresa existe e está ativa
-        return nuvem.BancoRemoto(bid)
+        return copia_leitura.BancoHibrido(bid, ao_usar=_marcar_fonte)   # cópia no Neon quando dá; senão, o agente
     if bid not in _conexoes:
         _conexoes[bid] = db.abrir(C(bid))
     return _conexoes[bid]
+
+
+def _marcar_fonte(fonte, recebido=None):
+    """Guarda de onde vieram os dados desta requisição (cópia ou agente), para o cabeçalho X-Dados."""
+    f = g.setdefault("fontes", {})
+    f[fonte] = True
+    if fonte == "copia" and recebido:
+        g.dados_de = min(g.get("dados_de") or recebido, recebido)
+
+
+def _banco_vivo():
+    """Banco direto no servidor da empresa (Consulta SQL: o usuário escreve o SQL, roda sempre no Firebird)."""
+    b = banco()
+    return getattr(b, "remoto", b)
 
 
 def _bancos_usuario(u):
@@ -194,6 +209,11 @@ _CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
 @app.after_request
 def cabecalhos_seguranca(resp):
     h = resp.headers
+    fontes = g.get("fontes") or {}
+    if fontes:
+        # de onde vieram os dados: "copia:<hora da última sincronização>", "agente" ou "misto:<hora>"
+        de = int(g.get("dados_de") or 0)
+        h["X-Dados"] = (f"misto:{de}" if fontes.get("agente") else f"copia:{de}") if fontes.get("copia") else "agente"
     h.setdefault("Content-Security-Policy", _CSP)
     h["X-Content-Type-Options"] = "nosniff"
     h["X-Frame-Options"] = "DENY"
@@ -586,6 +606,7 @@ def proibido(_e):
 def _args():
     a = request.args.to_dict()
     a.pop("_tipos_perm", None)
+    a.pop("_frota", None)
     a["_tipos_perm"] = _tipos()
     return a
 
@@ -807,11 +828,56 @@ def api_clientes():
     return _resposta("clientes", "Clientes e fornecedores", d, _sub_filtros())
 
 
+def _frota():
+    """Movimentos do Frotas desta empresa: {codtmv: "abastecimento"|"manutencao"}, ou {} se ainda não escolhidos.
+    Empresa que já usa o padrão antigo (1.2.40 / 1.2.39 com máquina) começa com ele, sem precisar escolher."""
+    bid = _bid()
+    t = usuarios.config_empresa(bid, "frota_tipos")
+    if t is None:
+        t = dict(servicos.FROTA_PADRAO) if servicos.frota_padrao_em_uso(banco(), C()) else {}
+        if t:
+            usuarios.gravar_config_empresa(bid, "frota_tipos", t, "automático (padrão antigo)")
+    return t or {}
+
+
+def _sem_config_frota():
+    return jsonify(configurar=True, pode_configurar=bool(g.usuario.get("admin")),
+                   erro="Os movimentos do Frotas ainda não foram escolhidos para esta empresa."), 409
+
+
+@app.route("/api/frotas/tipos", methods=["GET", "POST"])
+@exige("frotas")
+def api_frota_tipos():
+    if request.method == "POST":
+        if not g.usuario.get("admin"):
+            return jsonify(erro="Só o administrador da empresa escolhe os movimentos do Frotas."), 403
+        d = request.get_json(silent=True) or {}
+        validos = {t["cod"] for t in servicos.frota_tipos_disponiveis(banco(), C())}
+        escolha = {}
+        for cod, cat in (d.get("tipos") or {}).items():
+            cod = str(cod).strip()[:20]
+            if cat in servicos.ROTULO_FROTA and cod in validos:
+                escolha[cod] = cat
+        if not escolha:
+            return jsonify(erro="Marque pelo menos um movimento."), 400
+        usuarios.gravar_config_empresa(_bid(), "frota_tipos", escolha, g.usuario["login"])
+        usuarios.registrar(g.usuario["login"], "movimentos do Frotas", ", ".join(f"{c}={v}" for c, v in sorted(escolha.items())))
+        for k in [k for k in _cache if k.startswith(f"{_bid()}:frotas:")]:
+            _cache.pop(k, None)
+        return jsonify(ok=True, tipos=escolha)
+    return jsonify(tipos=servicos.frota_tipos_disponiveis(banco(), C()), escolha=_frota(),
+                   pode_configurar=bool(g.usuario.get("admin")))
+
+
 @app.route("/api/frotas")
 @exige("frotas")
 def api_frotas():
     a = _args()
-    chave = "frotas:" + ":".join(f"{k}={a.get(k, '')}" for k in ("ini", "fim", "maquina", "grupo", "filial", "busca", "ver")) + ":" + ",".join(_tipos())
+    a["_frota"] = _frota()
+    if not a["_frota"]:
+        return _sem_config_frota()
+    chave = "frotas:" + ":".join(f"{k}={a.get(k, '')}" for k in ("ini", "fim", "maquina", "grupo", "filial", "busca", "ver")) + ":" + ",".join(_tipos()) \
+        + ":" + ",".join(f"{c}={v}" for c, v in sorted(a["_frota"].items()))
     d = _em_cache(chave, 120, lambda: servicos.frotas(banco(), C(), a, CFG["limite_linhas"]))
     tit = "Frotas - lançamentos de abastecimento e manutenção" if a.get("ver") == "lancamentos" else "Frotas - gasto por máquina"
     return _resposta("frotas", tit, d, _sub_filtros())
@@ -821,7 +887,11 @@ def api_frotas():
 @exige("frotas")
 def api_frota_maquina():
     cod = request.args.get("codigo", "")[:10]
-    d = servicos.frota_maquina(banco(), C(), cod, _args(), CFG["limite_linhas"])
+    a = _args()
+    a["_frota"] = _frota()
+    if not a["_frota"]:
+        return _sem_config_frota()
+    d = servicos.frota_maquina(banco(), C(), cod, a, CFG["limite_linhas"])
     m = d["maquina"]
     tit = f"Frotas - {m.get('placa') or m.get('codigo') or cod} {m.get('nome') or ''}".strip()
     return _resposta("frota_maquina", tit, d, _sub_filtros())
@@ -913,7 +983,7 @@ def _executar_sql(sql, limite=None, valores=None):
     valores = {k.upper(): (v if v not in ("", None) else None) for k, v in (valores or {}).items()}
     q, params = relatorios_rb.ligar(sql, valores)
     ini = time.perf_counter()
-    cols, linhas, mais = banco().consultar(q, params, limite or CFG["limite_linhas"])
+    cols, linhas, mais = _banco_vivo().consultar(q, params, limite or CFG["limite_linhas"])
     return {"colunas": cols, "linhas": linhas, "truncado": mais, "ms": int((time.perf_counter() - ini) * 1000),
             "parametros": relatorios_rb.nomes_parametros(sql)}
 
@@ -1720,7 +1790,11 @@ def agente_sinc():
     except (ValueError, OSError):
         return jsonify(erro="Pacote inválido."), 400
     if "resumo" in d:
-        usuarios.gravar_sinc_agente(eid, d.get("resumo") if isinstance(d.get("resumo"), dict) else None)
+        resumo = d.get("resumo") if isinstance(d.get("resumo"), dict) else None
+        if resumo is not None:
+            resumo["recebido"] = time.time()          # hora do site: diz se a cópia está em dia
+        usuarios.gravar_sinc_agente(eid, resumo)
+        copia_leitura.esquecer(eid)
         return jsonify(ok=True)
     try:
         return jsonify(copia.receber(eid, d))

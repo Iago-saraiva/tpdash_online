@@ -8,9 +8,9 @@
   <label>Grupo<select name="grupo" data-auto></select></label>
   <label>Filial<select name="filial" data-auto></select></label>
   <label>Busca<input name="busca" placeholder="placa, código ou nome"></label>
-  <div class="acoes"><button type="button" class="btn" id="limpar">Limpar</button><button class="btn primario">Aplicar</button></div>
+  <div class="acoes"><button type="button" class="btn" id="cfg-frota" hidden title="Escolher os movimentos de abastecimento e manutenção">Movimentos…</button><button type="button" class="btn" id="limpar">Limpar</button><button class="btn primario">Aplicar</button></div>
 </form>
-<p class="nota">Abastecimentos pelo movimento 1.2.40 (combustível/lubrificante) e manutenções pelo 1.2.39, ligados à máquina informada no movimento. Cancelados não entram.</p>
+<p class="nota" id="nota-frota">Abastecimentos pelo movimento 1.2.40 (combustível/lubrificante) e manutenções pelo 1.2.39, ligados à máquina informada no movimento. Cancelados não entram.</p>
 <div class="kpis" id="kpis"></div>
 <div class="grade">
   <div class="cartao c8"><div class="cartao-cab"><h2>Gasto por mês</h2></div><div id="g-mes"></div></div>

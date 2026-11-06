@@ -707,3 +707,7 @@ body:has(#instalar-app) .chat-fab { bottom: 80px; }
 .filial-inicio { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
 .filial-inicio select { min-width: 0; max-width: 260px; height: 30px; }
 @media (max-width: 600px) { .filial-inicio { margin-left: 0; width: 100%; } .filial-inicio select { flex: 1; max-width: none; } }
+
+/* de onde vieram os dados (cópia no site ou servidor da empresa) */
+.dados-de { font-size: 11.5px; color: var(--texto-3); white-space: nowrap; }
+@media (max-width: 700px) { .dados-de { display: none; } }

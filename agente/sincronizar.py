@@ -138,7 +138,12 @@ def estrutura(banco, tabela):
         cols, chave = [], []
         for _cid, nome, tipo, _nn, _pad, pk in linhas:
             t = (tipo or "").upper()
-            cols.append((nome.upper(), "inteiro" if "INT" in t else "numero" if t in ("REAL", "NUMERIC", "FLOAT") else "texto"))
+            n = nome.upper()
+            tipo_c = "inteiro" if "INT" in t else "numero" if t in ("REAL", "NUMERIC", "FLOAT") else "texto"
+            if tipo_c == "texto" and n.startswith(("DATA", "DT")):     # demonstração: datas guardadas como texto
+                _, ex, _ = banco.consultar(f"SELECT {nome} FROM {tabela} WHERE {nome} IS NOT NULL", (), 1)
+                tipo_c = "datahora" if ex and len(str(ex[0][0])) > 10 else "data"
+            cols.append((n, tipo_c))
             if pk:
                 chave.append(nome.upper())
         return [c for c in cols if not SENSIVEIS.search(c[0])], chave or _chave_conhecida(tabela, cols)

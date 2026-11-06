@@ -71,7 +71,8 @@ def _traduzir(sql):
     elif re.match(r"\s*INSERT INTO (consultas|usuarios|acessos)\b", s, re.I):
         s += " RETURNING id"
         retorna_id = True
-    s = re.sub(r"\blogin\s*=\s*\?", "lower(login) = lower(?)", s)    # login sem diferenciar maiúsculas (COLLATE NOCASE)
+    # login sem diferenciar maiúsculas (COLLATE NOCASE), só nas condições: no "SET login=?" do UPDATE fica como está
+    s = re.sub(r"(?i)\b(WHERE|AND|OR)\s+login\s*=\s*\?", r"\1 lower(login) = lower(?)", s)
     s = s.replace("%", "%%").replace("?", "%s")
     return s, retorna_id
 
@@ -105,15 +106,16 @@ class _ConexaoPG:
             cur.executemany(sql, seq)
 
     def copiar_e_mesclar(self, tabela, colunas, linhas):
-        """Grava muitas linhas (inclui ou substitui pela coluna _k) com COPY: rápido mesmo com o banco longe."""
+        """Grava muitas linhas (inclui ou substitui pela coluna _k) com COPY: rápido mesmo com o banco longe.
+        `tabela` vem com aspas (e schema), como copia.nome_sql devolve."""
         cols = ", ".join(f'"{c}"' for c in colunas)
         sets = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in colunas[1:])
         with self.con.cursor() as cur:
-            cur.execute(f'CREATE TEMP TABLE IF NOT EXISTS _carga (LIKE "{tabela}" INCLUDING DEFAULTS) ON COMMIT DROP')
+            cur.execute(f'CREATE TEMP TABLE IF NOT EXISTS _carga (LIKE {tabela} INCLUDING DEFAULTS) ON COMMIT DROP')
             with cur.copy(f'COPY _carga ({cols}) FROM STDIN') as cp:
                 for linha in linhas:
                     cp.write_row(linha)
-            cur.execute(f'INSERT INTO "{tabela}" ({cols}) SELECT DISTINCT ON (_k) {cols} FROM _carga '
+            cur.execute(f'INSERT INTO {tabela} ({cols}) SELECT DISTINCT ON (_k) {cols} FROM _carga '
                         f'ON CONFLICT (_k) DO UPDATE SET {sets}')
             cur.execute("DROP TABLE _carga")
 
@@ -157,6 +159,8 @@ CREATE TABLE IF NOT EXISTS agentes_estado (
     filiais TEXT, filiais_quando DOUBLE PRECISION, filiais_erro TEXT);
 CREATE TABLE IF NOT EXISTS agentes_info (empresa_id TEXT PRIMARY KEY, dados TEXT);
 CREATE TABLE IF NOT EXISTS arquivos_site (caminho TEXT PRIMARY KEY, conteudo TEXT, atualizado DOUBLE PRECISION);
+CREATE TABLE IF NOT EXISTS config_empresa (empresa_id TEXT NOT NULL, chave TEXT NOT NULL, valor TEXT,
+    atualizado DOUBLE PRECISION, por TEXT, PRIMARY KEY (empresa_id, chave));
 CREATE TABLE IF NOT EXISTS agentes_consultas (
     empresa_id TEXT NOT NULL, dia TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, erros INTEGER NOT NULL DEFAULT 0,
     segundos DOUBLE PRECISION NOT NULL DEFAULT 0, PRIMARY KEY (empresa_id, dia));

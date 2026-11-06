@@ -494,6 +494,27 @@ def _tabela_agentes(con):
         segundos REAL NOT NULL DEFAULT 0, PRIMARY KEY (empresa_id, dia))""")
 
 
+def _tabela_config(con):
+    con.execute("CREATE TABLE IF NOT EXISTS config_empresa (empresa_id TEXT NOT NULL, chave TEXT NOT NULL, valor TEXT, "
+                "atualizado REAL, por TEXT, PRIMARY KEY (empresa_id, chave))")
+
+
+def config_empresa(eid, chave):
+    """Configuração guardada para uma empresa/banco (ex.: movimentos do Frotas). None se não houver."""
+    with _con() as con:
+        _tabela_config(con)
+        r = con.execute("SELECT valor FROM config_empresa WHERE empresa_id = ? AND chave = ?", (eid, chave)).fetchone()
+    return json.loads(r[0]) if r and r[0] else None
+
+
+def gravar_config_empresa(eid, chave, valor, por=""):
+    with _con() as con:
+        _tabela_config(con)
+        con.execute("INSERT OR IGNORE INTO config_empresa (empresa_id, chave) VALUES (?, ?)", (eid, chave))
+        con.execute("UPDATE config_empresa SET valor = ?, atualizado = ?, por = ? WHERE empresa_id = ? AND chave = ?",
+                    (json.dumps(valor, ensure_ascii=False), time.time(), por, eid, chave))
+
+
 def _tabela_arquivos(con):
     con.execute("CREATE TABLE IF NOT EXISTS arquivos_site (caminho TEXT PRIMARY KEY, conteudo TEXT, atualizado REAL)")
 

@@ -705,17 +705,71 @@ FROM FCFO C WHERE C.CODEMPRESA = ?
 
 
 # ======================================================================== frotas (abastecimento e manutenção)
-TMV_MANUTENCAO = "1.2.39"     # Rateio Manutenção de Veículos e Máquinas
+TMV_MANUTENCAO = "1.2.39"     # Rateio Manutenção de Veículos e Máquinas (padrão antigo, usado pela Método)
 TMV_COMBUSTIVEL = "1.2.40"    # Rateio Combustível / Lubrificante
+FROTA_PADRAO = {TMV_COMBUSTIVEL: "abastecimento", TMV_MANUTENCAO: "manutencao"}
+ROTULO_FROTA = {"abastecimento": "Abastecimento", "manutencao": "Manutenção"}
+
+
+class FrotaSemConfig(Exception):
+    """A empresa ainda não escolheu os movimentos do Frotas."""
+
+
+def _frota_tipos(a):
+    """{codtmv: "abastecimento"|"manutencao"} escolhidos pela empresa (vem do app em a["_frota"])."""
+    t = a.get("_frota") or {}
+    if not t:
+        raise FrotaSemConfig()
+    return t
+
+
+def _de(tipos, cat):
+    return {c for c, k in tipos.items() if k == cat}
+
+
+def frota_padrao_em_uso(banco, cfg):
+    """A empresa já usa os movimentos do padrão antigo (1.2.40 / 1.2.39) com máquina? Então começa com eles."""
+    _, l, _ = banco.consultar("SELECT IDMOV FROM TMOV WHERE CODEMPRESA = ? AND CODTMV IN (?, ?) AND CODMAQUINA IS NOT NULL",
+                              (cfg["empresa"], TMV_COMBUSTIVEL, TMV_MANUTENCAO), 1)
+    return bool(l)
+
+
+def frota_tipos_disponiveis(banco, cfg):
+    """Tipos de movimento que podem entrar no Frotas: os que já têm movimento com máquina e os que pedem máquina."""
+    emp = cfg["empresa"]
+    usados = _df(banco, "SELECT M.CODTMV AS COD, COUNT(*) AS QTD, MIN(M.DATAEMISSAO) AS DE, MAX(M.DATAEMISSAO) AS ATE FROM TMOV M "
+                        "WHERE M.CODEMPRESA = ? AND M.CODMAQUINA IS NOT NULL AND M.CODMAQUINA <> '' "
+                        "AND (M.STATUS IS NULL OR M.STATUS <> 'C') GROUP BY M.CODTMV", (emp,))
+    nomes = _df(banco, "SELECT CODTIPOMOV AS COD, NOME FROM TTIPOMOV WHERE CODEMPRESA = ?", (emp,))
+    try:
+        pede = _df(banco, "SELECT CODTIPOMOV AS COD FROM TTIPOMOV2 WHERE CODEMPRESA = ? AND EDITAMAQUINA = 'T'", (emp,))
+        pede = {str(c).strip() for c in pede["COD"]}
+    except Exception:  # noqa: BLE001 - bancos sem TTIPOMOV2 (ex.: demonstração)
+        pede = set()
+    nome = {str(c).strip(): _t(n) for c, n in zip(nomes["COD"], nomes["NOME"])}
+    lista = {}
+    for r in usados.itertuples():
+        c = str(r.COD).strip()
+        lista[c] = {"cod": c, "nome": nome.get(c, ""), "qtd": int(r.QTD), "de": _iso(r.DE), "ate": _iso(r.ATE), "pede_maquina": c in pede}
+    for c in pede:
+        lista.setdefault(c, {"cod": c, "nome": nome.get(c, ""), "qtd": 0, "de": None, "ate": None, "pede_maquina": True})
+    return sorted(lista.values(), key=lambda x: (-x["qtd"], x["cod"]))
+
+
+def _iso(v):
+    if v is None or (isinstance(v, float) and v != v):
+        return None
+    return v.isoformat()[:10] if hasattr(v, "isoformat") else str(v)[:10]
 
 
 def _where_frota(cfg, a):
     hoje = HOJE()
     ini = _data(a.get("ini"), dt.date(hoje.year, hoje.month, 1) - dt.timedelta(days=334))
     fim = _data(a.get("fim"), hoje)
-    where = (" WHERE M.CODEMPRESA = ? AND M.CODTMV IN (?, ?) AND (M.STATUS IS NULL OR M.STATUS <> 'C')"
+    tipos = sorted(_frota_tipos(a))
+    where = (f" WHERE M.CODEMPRESA = ? AND M.CODTMV IN ({', '.join('?' * len(tipos))}) AND (M.STATUS IS NULL OR M.STATUS <> 'C')"
              " AND M.DATAEMISSAO BETWEEN ? AND ?")
-    params = [cfg["empresa"], TMV_MANUTENCAO, TMV_COMBUSTIVEL, ini, fim]
+    params = [cfg["empresa"], *tipos, ini, fim]
     if a.get("maquina"):
         where += " AND M.CODMAQUINA = ?"
         params.append(a["maquina"])
@@ -751,12 +805,15 @@ def _frota_dados(banco, cfg, a, limite):
                        + LEFT_PROD + where, params, max(limite, 100000))
     _num(docs, "KM", "VALOR")
     _num(itens, "QTD", "TOTAL")
-    docs["TIPO"] = docs["CODTMV"].map({TMV_MANUTENCAO: "Manutenção", TMV_COMBUSTIVEL: "Abastecimento"}).fillna(docs["CODTMV"])
+    tipos = _frota_tipos(a)
+    docs["CODTMV"] = docs["CODTMV"].astype(str).str.strip()
+    docs["CATEGORIA"] = docs["CODTMV"].map(tipos)
+    docs["TIPO"] = docs["CATEGORIA"].map(ROTULO_FROTA).fillna(docs["CODTMV"])
     # litros de combustível: itens em litro do movimento de combustível, fora ARLA (aditivo)
     prod = itens["PRODUTO"].fillna("").str.upper()
     und = itens["UND"].fillna("").str.upper().str.strip()
     itens["LITROS"] = itens["QTD"].where(und.isin(["L", "LT", "LTS", "LITRO", "LITROS"]) & ~prod.str.contains("ARLA"), 0.0)
-    comb = set(docs.loc[docs["CODTMV"] == TMV_COMBUSTIVEL, "IDMOV"])
+    comb = set(docs.loc[docs["CATEGORIA"] == "abastecimento", "IDMOV"])
     itens.loc[~itens["IDMOV"].isin(comb), "LITROS"] = 0.0
     itens["VALOR_LITROS"] = itens["TOTAL"].where(itens["LITROS"] > 0, 0.0)
 
@@ -792,8 +849,8 @@ def _fmt_qtd(q):
 
 def frotas(banco, cfg, a, limite):
     ini, fim, docs, itens = _frota_dados(banco, cfg, a, limite)
-    ab = docs[docs["CODTMV"] == TMV_COMBUSTIVEL]
-    mt = docs[docs["CODTMV"] == TMV_MANUTENCAO]
+    ab = docs[docs["CATEGORIA"] == "abastecimento"]
+    mt = docs[docs["CATEGORIA"] == "manutencao"]
     litros = float(ab["LITROS"].sum())
     kpis = {"total": float(docs["VALOR"].sum()), "combustivel": float(ab["VALOR"].sum()), "litros": litros,
             "preco_litro": float(ab["VALOR_LITROS"].sum() / litros) if litros else 0.0,
@@ -803,7 +860,7 @@ def frotas(banco, cfg, a, limite):
     # por máquina
     linhas = []
     for cod, g in docs.groupby("CODMAQUINA", dropna=False):
-        gab, gmt = g[g["CODTMV"] == TMV_COMBUSTIVEL], g[g["CODTMV"] == TMV_MANUTENCAO]
+        gab, gmt = g[g["CATEGORIA"] == "abastecimento"], g[g["CATEGORIA"] == "manutencao"]
         lit = float(gab["LITROS"].sum())
         km = g.loc[g["KM"] > 0, "KM"]
         km_ini, km_fim = (float(km.min()), float(km.max())) if len(km) else (None, None)
@@ -846,6 +903,7 @@ def frotas(banco, cfg, a, limite):
     grupos = _df(banco, "SELECT CODIGO AS COD, NOME FROM AMAQUINASGRUPO WHERE CODEMPRESA = ? ORDER BY NOME", (cfg["empresa"],))
     return {
         "periodo": [ini.isoformat(), fim.isoformat()],
+        "tipos_frota": [{"cod": c, "categoria": k} for c, k in sorted(_frota_tipos(a).items())],
         "maquinas": [{"cod": str(r.COD).strip(), "nome": " ".join(x for x in [_t(r.PLACA), _t(r.NOME)] if x)}
                      for r in maqs.itertuples()],
         "grupos": [{"cod": str(r.COD).strip(), "nome": _t(r.NOME)} for r in grupos.itertuples()],
@@ -873,7 +931,7 @@ def frota_maquina(banco, cfg, codigo, a, limite):
     info = {k.lower(): (None if v != v else v) for k, v in (maq.iloc[0].to_dict().items() if len(maq) else {"CODIGO": codigo}.items())}
     lanc = docs.sort_values(["EMISSAO", "IDMOV"], ascending=False)[
         ["IDMOV", "EMISSAO", "TIPO", "DOCUMENTO", "KM", "FORNECEDOR", "ITENS", "LITROS", "VALOR"]]
-    ab, mt = docs[docs["CODTMV"] == TMV_COMBUSTIVEL], docs[docs["CODTMV"] == TMV_MANUTENCAO]
+    ab, mt = docs[docs["CATEGORIA"] == "abastecimento"], docs[docs["CATEGORIA"] == "manutencao"]
     resumo = {"combustivel": float(ab["VALOR"].sum()), "litros": float(ab["LITROS"].sum()), "manutencao": float(mt["VALOR"].sum()),
               "total": float(docs["VALOR"].sum()), "abastecimentos": int(len(ab)), "manutencoes": int(len(mt))}
     totais = [["Abastecimentos", resumo["abastecimentos"], "qtd"], ["Litros", resumo["litros"], "qtd"],

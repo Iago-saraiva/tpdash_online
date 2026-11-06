@@ -43,6 +43,23 @@
     }
   }
 
+  /* "Dados de 14:32": a tela veio da cópia do banco guardada no site (atualizada pelo agente a cada N minutos) */
+  function fonteDados(x) {
+    const s = document.getElementById("dados-de");
+    if (!s || !x) return;
+    const [tipo, quando] = x.split(":");
+    if (tipo === "agente") {
+      s.textContent = "Dados ao vivo"; s.title = "Lidos agora do servidor da empresa";
+    } else {
+      const t = new Date(Number(quando) * 1000);
+      const hoje = new Date().toDateString() === t.toDateString();
+      const hora = t.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      s.textContent = "Dados de " + (hoje ? hora : t.toLocaleDateString("pt-BR") + " " + hora);
+      s.title = "Cópia do banco guardada no site, atualizada pelo agente" + (tipo === "misto" ? " (parte lida agora do servidor da empresa)" : "");
+    }
+    s.hidden = false;
+  }
+
   async function api(url, opcoes = {}) {
     const op = { headers: { "X-Painel": TOKEN }, ...opcoes };
     if (op.json !== undefined) {
@@ -52,6 +69,7 @@
       delete op.json;
     }
     const r = await buscar(url, op);
+    fonteDados(r.headers.get("X-Dados"));
     let d = null;
     try { d = await r.json(); } catch (e) { /* sem JSON */ }
     if (r.status === 401) { location.href = "/login?proximo=" + encodeURIComponent(location.pathname + location.search); throw new Error("Sessão expirada"); }
@@ -919,8 +937,86 @@
     VALOR_COMBUSTIVEL: "Combustível (R$)", PRECO_LITRO: "R$ / litro", MANUTENCOES: "Manutenções", VALOR_MANUTENCAO: "Manutenção (R$)",
     VALOR_TOTAL: "Total (R$)", KM_INICIAL: "KM inicial", KM_FINAL: "KM final", KM_RODADO: "KM rodado", KM_POR_LITRO: "KM / litro",
     ULTIMO: "Último lançamento", KM: "KM", ITENS: "Itens", FORNECEDOR: "Fornecedor" };
+  /* Movimentos do Frotas: cada empresa escolhe quais tipos de movimento são abastecimento ou manutenção. */
+  const CAT_FROTA = { abastecimento: "Abastecimento", manutencao: "Manutenção" };
+  function sugerirCategoria(nome) {
+    return /COMBUST|ABASTEC|LUBRIF|DIESEL|GASOLINA|ETANOL|ARLA/i.test(nome || "") ? "abastecimento" : "manutencao";
+  }
+  async function configurarFrota(primeira) {
+    const corpo = gaveta("Movimentos do Frotas", true);
+    try {
+      const d = await api("/api/frotas/tipos");
+      corpo.appendChild(el("p", "", primeira
+        ? "Escolha os tipos de movimento que são abastecimento ou manutenção das máquinas desta empresa. A escolha fica salva e vale para todos os usuários."
+        : "Marque os tipos de movimento que entram no Frotas e diga se cada um é abastecimento ou manutenção. Os litros e o preço do litro saem só dos de abastecimento."));
+      corpo.appendChild(el("p", "nota", "Aparecem os tipos que já têm movimento com máquina informada e os que pedem máquina no Puma. Não marque a nota e o rateio da mesma despesa, senão o valor conta duas vezes."));
+      if (!d.tipos.length) { aviso(corpo, "Nenhum tipo de movimento desta empresa tem máquina informada."); return; }
+      const tab = el("table", "dados");
+      tab.innerHTML = "<thead><tr><th></th><th>Movimento</th><th class='num'>Lançamentos</th><th>Período</th><th>Conta como</th></tr></thead>";
+      const tb = el("tbody");
+      const linhas = d.tipos.map((t) => {
+        const tr = el("tr");
+        const ck = el("input"); ck.type = "checkbox"; ck.id = "frota-" + t.cod; ck.checked = !!d.escolha[t.cod];
+        const sel = el("select"); sel.id = "frota-cat-" + t.cod;
+        Object.entries(CAT_FROTA).forEach(([v, r]) => { const o = el("option", "", r); o.value = v; sel.appendChild(o); });
+        sel.value = d.escolha[t.cod] || sugerirCategoria(t.nome);
+        sel.disabled = !ck.checked || !d.pode_configurar; ck.disabled = !d.pode_configurar;
+        ck.onchange = () => { sel.disabled = !ck.checked; };
+        const td = (x, c) => { const z = el("td", c); if (x instanceof Node) z.appendChild(x); else z.textContent = x; tr.appendChild(z); return z; };
+        td(ck);
+        const lb = el("label"); lb.htmlFor = ck.id; lb.textContent = `${t.cod} · ${t.nome || ""}`;
+        const cel = td(lb);
+        if (t.pede_maquina) { cel.appendChild(document.createTextNode(" ")); cel.appendChild(el("span", "tag", "pede máquina")); }
+        td(F.inteiro(t.qtd), "num");
+        td(t.qtd ? `${fmtData(t.de)} a ${fmtData(t.ate)}` : "sem lançamentos");
+        td(sel);
+        tb.appendChild(tr);
+        return { t, ck, sel };
+      });
+      tab.appendChild(tb);
+      const caixa = el("div"); caixa.style.overflowX = "auto"; caixa.appendChild(tab);
+      corpo.appendChild(caixa);
+      if (!d.pode_configurar) { corpo.appendChild(el("p", "nota", "Só o administrador da empresa pode mudar esta escolha.")); return; }
+      const msg = el("div");
+      const bt = el("button", "btn primario", "Salvar");
+      bt.type = "button"; bt.style.marginTop = "12px";
+      bt.onclick = async () => {
+        const tipos = {};
+        linhas.forEach(({ t, ck, sel }) => { if (ck.checked) tipos[t.cod] = sel.value; });
+        bt.disabled = true;
+        try { await api("/api/frotas/tipos", { json: { tipos } }); location.reload(); }
+        catch (e) { aviso(msg, e.message); bt.disabled = false; }
+      };
+      corpo.appendChild(bt); corpo.appendChild(msg);
+    } catch (e) { aviso(corpo, e.message); }
+  }
+
   async function telaFrotas() {
     const form = $("#filtros");
+    let cfgFrota;
+    try { cfgFrota = await api("/api/frotas/tipos"); } catch (e) { aviso($(".conteudo"), e.message); return; }
+    const btCfg = $("#cfg-frota");
+    if (btCfg) { btCfg.hidden = !cfgFrota.pode_configurar; btCfg.onclick = () => configurarFrota(false); }
+    const escolhidos = Object.entries(cfgFrota.escolha || {});
+    if (!escolhidos.length) {
+      $$(".conteudo > *").forEach((x) => { x.hidden = true; });
+      const box = el("div", "aviso"); box.id = "aviso-frota";
+      box.textContent = cfgFrota.pode_configurar
+        ? "Os movimentos do Frotas ainda não foram escolhidos para esta empresa. "
+        : "O Frotas ainda não foi configurado para esta empresa. Peça ao administrador para escolher os movimentos de abastecimento e manutenção.";
+      if (cfgFrota.pode_configurar) {
+        const b = el("button", "btn primario pequeno", "Escolher movimentos"); b.type = "button"; b.onclick = () => configurarFrota(true);
+        box.appendChild(b);
+      }
+      $(".conteudo").appendChild(box);
+      if (cfgFrota.pode_configurar) configurarFrota(true);
+      return;
+    }
+    const nota = $("#nota-frota");
+    if (nota) {
+      const nomes = (cat) => escolhidos.filter(([, c]) => c === cat).map(([cod]) => cod).join(", ") || "nenhum";
+      nota.textContent = `Abastecimentos pelos movimentos ${nomes("abastecimento")} e manutenções pelos movimentos ${nomes("manutencao")}, ligados à máquina informada no movimento. Cancelados não entram.`;
+    }
     const podeDoc = document.body.dataset.modulos.split(",").includes("movimentos");
     const tabMaq = new Tabela($("#tabela-maq"), { rotulos: ROT_FROTA, onClick: (r, cols) => abrirMaquinaFrota(r[cols.indexOf("CODMAQUINA")]) });
     const tabLanc = new Tabela($("#tabela-lanc"), { rotulos: ROT_FROTA, ocultar: ["IDMOV"],
