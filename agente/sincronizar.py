@@ -185,7 +185,7 @@ class Foto:
     def __init__(self, eid):
         self.caminho = os.path.join(config.BASE_DIR, "dados", f"sinc_{eid}.sqlite")
         os.makedirs(os.path.dirname(self.caminho), exist_ok=True)
-        self.con = sqlite3.connect(self.caminho, check_same_thread=False)
+        self.con = sqlite3.connect(self.caminho, check_same_thread=False, timeout=60)
         self.con.execute("CREATE TABLE IF NOT EXISTS foto (tabela TEXT, k TEXT, h TEXT, PRIMARY KEY (tabela, k))")
         self.con.execute("CREATE TABLE IF NOT EXISTS tabelas (tabela TEXT PRIMARY KEY, assinatura TEXT)")
         self.con.commit()

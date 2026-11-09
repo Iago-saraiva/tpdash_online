@@ -97,15 +97,24 @@ def estado_servico():
         return ""
 
 
+# O .exe de arquivo único roda em dois processos (o que abre e o que trabalha). Parar a tarefa encerra só o
+# primeiro; o segundo continuava sincronizando e, ao iniciar de novo, ficavam dois. Encerra também os que sobraram.
+_ENCERRAR_SOBRAS = ("Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*--servico*' -and "
+                    "($_.Name -like 'TPDashAgente*' -or $_.Name -like 'python*') } | "
+                    "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
+
+
 def parar_servico():
     if sys.platform == "win32":
-        _powershell(f"Stop-ScheduledTask -TaskName {_ps_texto(TAREFA)} -ErrorAction SilentlyContinue")
+        _powershell(f"Stop-ScheduledTask -TaskName {_ps_texto(TAREFA)} -ErrorAction SilentlyContinue; "
+                    f"Start-Sleep -Seconds 1; {_ENCERRAR_SOBRAS}")
 
 
 def iniciar_servico():
     if sys.platform == "win32":
         _powershell(f"Stop-ScheduledTask -TaskName {_ps_texto(TAREFA)} -ErrorAction SilentlyContinue; "
-                    f"Start-Sleep -Seconds 1; Start-ScheduledTask -TaskName {_ps_texto(TAREFA)}")
+                    f"Start-Sleep -Seconds 1; {_ENCERRAR_SOBRAS}; Start-Sleep -Seconds 1; "
+                    f"Start-ScheduledTask -TaskName {_ps_texto(TAREFA)}")
 
 
 ESTADOS = {"Running": "Rodando", "Ready": "Parado (pronto para iniciar)", "Disabled": "Desativado",

@@ -419,8 +419,27 @@ def criar_agentes():
     return endereco, agentes
 
 
+_TRAVA_UNICA = None
+
+
+def _so_uma_copia():
+    """Só um agente sincroniza por computador. Se já houver um rodando (ex.: a tarefa do Windows e outra
+    cópia aberta à mão, ou um processo que sobrou de um reinício), este não começa."""
+    global _TRAVA_UNICA
+    if sys.platform != "win32":
+        return True
+    import ctypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateMutexW.restype = ctypes.c_void_p
+    _TRAVA_UNICA = k32.CreateMutexW(None, False, "Global\\TPDashAgenteSincronizacao")
+    return bool(_TRAVA_UNICA) and ctypes.get_last_error() != 183      # 183 = ERROR_ALREADY_EXISTS
+
+
 def main():
     iniciar_log()
+    if "--testar" not in sys.argv and not _so_uma_copia():
+        log.warning("Já existe um TP DASH Agente rodando neste computador; esta cópia não vai iniciar.")
+        return
     endereco, agentes = criar_agentes()
     if "--testar" in sys.argv:
         for a in agentes:
