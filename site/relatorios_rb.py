@@ -273,7 +273,7 @@ def executar(banco, r, entrada, limite, pular=()):
                 info["aviso"] = f"Não foi possível vincular a {v['mestre']}; mostrando sem o vínculo"
         q, params = ligar(sql, valores)
         try:
-            cols, linhas, mais = banco.consultar(q, params + extra, limite)
+            cols, linhas, mais = banco.consultar(q, params + extra, min(limite, v.get("limite") or limite))
             info.update(colunas=cols, linhas=linhas, truncado=mais)
         except ErroBanco as e:
             info["erro"] = str(e)

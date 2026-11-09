@@ -521,9 +521,13 @@ def login():
             time.sleep(0.8)
             erro = erro or "Login ou senha incorretos."
     sel = request.form.get("banco") or request.cookies.get("painel_banco")
+    lista = _lista_bancos(list(_CFGS)) if (not SITE and len(_CFGS) > 1) else []
+    banco_sel = sel if (not SITE and sel in _CFGS) else bancos.PRINCIPAL
+    if _react():
+        return _spa("login", "Entrar", erro=erro, empresa=CFG["nome_empresa"], lembrar=CFG["lembrar_dias"] > 0,
+                    bancos_login=lista, banco_sel=banco_sel)
     return render_template("login.html", erro=erro, empresa=CFG["nome_empresa"], lembrar=CFG["lembrar_dias"] > 0,
-                           bancos=_lista_bancos(list(_CFGS)) if (not SITE and len(_CFGS) > 1) else [],
-                           banco_sel=sel if (not SITE and sel in _CFGS) else bancos.PRINCIPAL)
+                           bancos=lista, banco_sel=banco_sel)
 
 
 @app.route("/sair")
@@ -547,7 +551,10 @@ def trocar_senha():
                 return redirect("/")
             except ValueError as e:
                 erro = str(e)
-    return render_template("trocar_senha.html", erro=erro, empresa=C()["nome_empresa"] if g.banco_id else CFG["nome_empresa"])
+    empresa = C()["nome_empresa"] if g.banco_id else CFG["nome_empresa"]
+    if _react():
+        return _spa("trocar_senha", "Trocar senha", erro=erro, empresa=empresa)
+    return render_template("trocar_senha.html", erro=erro, empresa=empresa)
 
 
 # ------------------------------------------------------------------ páginas
@@ -564,7 +571,45 @@ PAGINAS = {
 }
 
 
+# ------------------------------------------------------------------ telas em React (site/frontend -> static/app)
+# As telas desta lista já foram migradas para React; as outras continuam nos templates antigos.
+# TPDASH_REACT=0 volta tudo para as telas antigas (sem precisar de outro build).
+TELAS_REACT = {"inicio", "movimentos", "movimentacoes", "financeiro", "estoque", "cadastros", "frotas", "relatorios", "sql", "admin"}
+
+
+def _arquivo_react():
+    """Arquivo .js gerado pelo build do React (lido do manifest do Vite). None se o build não existir."""
+    try:
+        with open(os.path.join(app.static_folder, "app", ".vite", "manifest.json"), encoding="utf-8") as f:
+            return "app/" + json.load(f)["src/main.tsx"]["file"]
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _react():
+    return os.environ.get("TPDASH_REACT", "1") != "0" and _arquivo_react() is not None
+
+
+def _spa(tela, titulo, **dados):
+    """Página do React: os dados iniciais vão num <script type="application/json"> e o React monta a tela."""
+    u = g.get("usuario")
+    d = {"tela": tela, "titulo": titulo, "csrf": _token(), "modo": "", "empresa": CFG["nome_empresa"]}
+    if u and tela not in ("login", "trocar_senha"):
+        d.update(
+            empresa=C()["nome_empresa"], modo=C()["modo"],
+            usuario={"nome": u["nome"], "admin": bool(u.get("admin")), "modulos": list(u["modulos"])},
+            paginas=[{"chave": k, "url": v[0], "titulo": v[1]} for k, v in PAGINAS.items() if k in u["modulos"]],
+            react=sorted(TELAS_REACT), admin_link=bool(u.get("admin") and _bid()),
+            bancos=_lista_bancos(_bancos_usuario(u)), banco_atual=_bid(),
+        )
+    d.update(dados)
+    chat = bool(u and "chat" in u["modulos"] and tela not in ("login", "trocar_senha"))
+    return render_template("spa.html", dados=d, js=_arquivo_react(), chat=chat)
+
+
 def _pagina(modulo):
+    if modulo in TELAS_REACT and _react():
+        return _spa(modulo, PAGINAS.get(modulo, ("", "Administração"))[1])
     return render_template(
         f"{modulo}.html", pagina=modulo, paginas=PAGINAS, usuario=g.usuario,
         empresa=C()["nome_empresa"], modo=C()["modo"], titulo=PAGINAS.get(modulo, ("", "Administração"))[1],
@@ -1320,7 +1365,16 @@ def _desenho_efetivo(r):
     return usuarios.obter_layout(_chave_desenho(r)) or _desenho_original(r)
 
 
+def _com_tabelas(r, d):
+    """Relatório com as tabelas do banco que o layout de impressão acrescentou (viram visões extras)."""
+    extras = desenho_mod.visoes_tabelas(d)
+    nomes = {v["nome"].upper() for v in r["visoes"]}
+    extras = [v for v in extras if v["nome"].upper() not in nomes]
+    return dict(r, visoes=list(r["visoes"]) + extras) if extras else r
+
+
 def _pdf_desenho(r, d, valores):
+    r = _com_tabelas(r, d)
     res = _rb_filtrar_tipos(relatorios_rb.executar(banco(), r, valores, max(CFG["limite_linhas"], 50000)))
     erros = [f"{v['nome']}: {v['erro']}" for v in res if v.get("erro")]
     if erros and all(v.get("erro") for v in res):
@@ -1339,13 +1393,17 @@ def api_desenho_abrir(rid):
     if not _rb_permitido(r):
         abort(404)
     valores, _ = _rb_valores(r)
+    base = (request.get_json(silent=True) or {}).get("base")
+    salvo = None if base in ("original", "padrao") else usuarios.obter_layout(_chave_desenho(r))
+    original = None if base == "padrao" else _desenho_original(r)
+    rt = _com_tabelas(r, salvo or original or {})        # tabelas do banco acrescentadas no editor
     campos, numeros = {}, {}
     try:
-        res = relatorios_rb.executar(banco(), r, valores, 30)
+        res = relatorios_rb.executar(banco(), rt, valores, 30)
     except db.ErroBanco:
         res = []
     import decimal
-    for v in r["visoes"]:
+    for v in rt["visoes"]:
         x = next((y for y in res if y["nome"] == v["nome"]), None)
         cols = (x or {}).get("colunas") or list(relatorios_rb._itens_select(v["sql"]))
         campos[v["nome"]] = [c.upper() for c in cols]
@@ -1355,9 +1413,6 @@ def api_desenho_abrir(rid):
             if vals and all(isinstance(z, (float, decimal.Decimal)) for z in vals):
                 nums.add(c.upper())
         numeros[v["nome"]] = nums
-    base = (request.get_json(silent=True) or {}).get("base")
-    salvo = None if base in ("original", "padrao") else usuarios.obter_layout(_chave_desenho(r))
-    original = None if base == "padrao" else _desenho_original(r)
     if salvo:
         d, origem = salvo, "salvo"
     elif original:
@@ -1367,8 +1422,8 @@ def api_desenho_abrir(rid):
     return jsonify(desenho=d, origem=origem, tem_original=bool(_desenho_original(r)), campos=campos,
                    tem_salvo=bool(usuarios.obter_layout(_chave_desenho(r))),
                    numeros={k: sorted(v) for k, v in numeros.items()},
-                   visoes=[{"nome": v["nome"], "mestre": v.get("mestre")} for v in r["visoes"]],
-                   pode_editar=_pode_editar_layout(), nome=r["nome"])
+                   visoes=[{"nome": v["nome"], "mestre": v.get("mestre"), "tabela": v.get("tabela")} for v in rt["visoes"]],
+                   pode_editar=_pode_editar_layout(), pode_tabelas=_pode_editar_layout(), nome=r["nome"])
 
 
 @app.route("/api/rb/<rid>/desenho", methods=["POST"])
@@ -1415,6 +1470,9 @@ def api_desenho_pdf(rid):
         return jsonify(erro="Este relatório não tem layout de impressão."), 400
     try:
         d = desenho_mod.validar(d)
+        if dados.get("desenho") and not _pode_editar_layout():
+            # quem não edita layouts não escolhe tabelas do banco: valem só as do layout salvo
+            d["tabelas"] = desenho_mod.validar(_desenho_efetivo(r) or {"relatorio": {}})["tabelas"]
         pdf, avisos = _pdf_desenho(r, d, valores)
     except ValueError as e:
         return jsonify(erro=str(e)), 400

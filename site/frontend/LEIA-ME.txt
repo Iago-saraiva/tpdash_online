@@ -1,0 +1,14 @@
+TP DASH (site) - telas em React
+===============================
+
+O código das telas fica em src/. O build vai para ..\static\app e esses arquivos vão para o GitHub,
+então o Render não precisa de Node: ele só serve os arquivos prontos.
+
+Para alterar uma tela:
+  1. Instale o Node.js 20 ou mais novo (só no computador de quem programa).
+  2. Nesta pasta:  npm install      (só na primeira vez)
+  3. Depois de mudar o código:  npm run build
+  4. Faça o commit junto com a pasta site\static\app.
+
+Telas já em React: veja TELAS_REACT em site\app.py. As outras continuam nos templates antigos.
+Para voltar tudo para as telas antigas sem novo build: variável de ambiente TPDASH_REACT=0.

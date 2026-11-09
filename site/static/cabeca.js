@@ -57,7 +57,7 @@ try { var t = localStorage.getItem("tema"); if (t) document.documentElement.data
 
   // app Android: opção para trocar o endereço do servidor
   document.addEventListener("DOMContentLoaded", function () {
-    if (!window.PainelApp || !window.PainelApp.configurar) return;
+    if (!window.PainelApp || !window.PainelApp.configurar || document.getElementById("raiz")) return;   // telas em React põem o link sozinhas
     var l = document.createElement("a");
     l.href = "#"; l.textContent = "Trocar servidor";
     l.onclick = function (e) { e.preventDefault(); window.PainelApp.configurar(); };

@@ -19,7 +19,7 @@ import struct
 
 VERSAO = 1
 TIPOS_BANDA = ("titulo", "cabecalho", "detalhe", "sumario", "rodape")
-TIPOS_ITEM = ("texto", "campo", "memo", "total", "variavel", "sistema", "linha", "retangulo", "sub")
+TIPOS_ITEM = ("texto", "campo", "memo", "total", "variavel", "sistema", "linha", "retangulo", "sub", "grade")
 SISTEMA = ("data", "hora", "datahora", "pagina", "paginas", "pagina_desc", "pagina_de", "pagina_x_de_y")
 CALCS = ("soma", "contagem", "media", "maximo", "minimo")
 
@@ -338,7 +338,7 @@ def _vitem(it, prof, contador):
     t = it["tipo"]
     s = {"tipo": t, "x": _num(it.get("x")), "y": _num(it.get("y")), "w": _num(it.get("w"), 10, 0.2, 2000),
          "h": _num(it.get("h"), 4, 0.1, 2000), "nome": _txt(it.get("nome"), 40)}
-    if t in ("texto", "campo", "memo", "total", "variavel", "sistema"):
+    if t in ("texto", "campo", "memo", "total", "variavel", "sistema", "grade"):
         f = it.get("fonte") or {}
         s["fonte"] = {"nome": _txt(f.get("nome") or "Arial", 40), "tam": _num(f.get("tam"), 10, 3, 96),
                       "n": bool(f.get("n")), "i": bool(f.get("i")), "s": bool(f.get("s")),
@@ -384,6 +384,21 @@ def _vitem(it, prof, contador):
         if prof >= 3:
             return None
         s["secao"] = _vsecao(it.get("secao") or {}, prof + 1, contador)
+    if t == "grade":
+        s["visao"] = _txt(it.get("visao"), 80) or None
+        cols = []
+        for c in (it.get("colunas") or [])[:40]:
+            if isinstance(c, dict) and c.get("campo"):
+                cols.append({"campo": re.sub(r"[^\w$]", "", _txt(c.get("campo"), 80)).upper(),
+                             "titulo": _txt(c.get("titulo"), 80), "largura": _num(c.get("largura"), 20, 1, 2000),
+                             "alin": c.get("alin") if c.get("alin") in ("e", "c", "d") else "e",
+                             "formato": _txt(c.get("formato"), 60)})
+        s["colunas"] = cols
+        s["alt_linha"] = _num(it.get("alt_linha"), 5, 2, 100)
+        s["cabecalho"] = it.get("cabecalho", True) is not False
+        s["cab_fundo"] = _vcor(it.get("cab_fundo"))
+        s["bordas"] = it.get("bordas", True) is not False
+        s["cor_borda"] = _vcor(it.get("cor_borda"), "#999999")
     return s
 
 
@@ -410,6 +425,49 @@ def _vsecao(s, prof, contador):
             "titulo_antes": s.get("titulo_antes", True) is not False}
 
 
+def _ident(v):
+    """Nome de tabela ou campo do banco: só letras, números, _ e $ (vai direto no SQL)."""
+    return re.sub(r"[^A-Za-z0-9_$]", "", str(v or ""))[:63].upper()
+
+
+def _vtabelas(lista):
+    """Tabelas do banco acrescentadas no editor: nome da visão, tabela, campos e ligação com outra visão."""
+    saida, nomes = [], set()
+    for t in (lista or [])[:20]:
+        if not isinstance(t, dict):
+            continue
+        tabela = _ident(t.get("tabela"))
+        nome = re.sub(r"[^\w ]", "", _txt(t.get("nome"), 40)).strip() or tabela
+        campos = []
+        for c in (t.get("campos") or [])[:150]:
+            c = _ident(c)
+            if c and c not in campos:
+                campos.append(c)
+        if not tabela or not campos or nome.upper() in nomes:
+            continue
+        nomes.add(nome.upper())
+        ligacoes = []
+        for par in (t.get("ligacoes") or [])[:5]:
+            if isinstance(par, (list, tuple)) and len(par) == 2 and _ident(par[0]) and _ident(par[1]):
+                ligacoes.append([_ident(par[0]), _ident(par[1])])
+        mestre = _txt(t.get("mestre"), 80) or None
+        saida.append({"nome": nome, "tabela": tabela, "campos": campos, "mestre": mestre if ligacoes else None,
+                      "ligacoes": ligacoes if mestre else []})
+    return saida
+
+
+def visoes_tabelas(d):
+    """Visões (SQL) das tabelas acrescentadas no editor, no formato das visões do ReportBuilder.
+    Ligadas a outra visão: só as linhas da tabela que batem com as linhas dela (vínculo mestre-detalhe)."""
+    vs = []
+    for t in _vtabelas((d or {}).get("tabelas")):
+        campos = list(t["campos"]) + [b for _, b in t["ligacoes"] if b not in t["campos"]]
+        sql = "SELECT " + ", ".join("T." + c for c in campos) + "\nFROM " + t["tabela"] + " T"
+        vs.append({"nome": t["nome"], "sql": sql, "mestre": t["mestre"], "ligacoes": t["ligacoes"],
+                   "tabela": t["tabela"], "limite": None if t["mestre"] else 500})
+    return vs
+
+
 def validar(d):
     if not isinstance(d, dict):
         raise ValueError("Desenho inválido.")
@@ -422,7 +480,8 @@ def validar(d):
         if isinstance(m, dict):
             aliases[_txt(k, 80)] = {_txt(a, 80).upper(): _txt(b, 80).upper() for a, b in list(m.items())[:500]}
     return {"versao": VERSAO, "origem": _txt(d.get("origem"), 20) or "editado", "pagina": pagina,
-            "relatorio": _vsecao(d.get("relatorio") or {}, 0, [0]), "aliases": aliases}
+            "relatorio": _vsecao(d.get("relatorio") or {}, 0, [0]), "aliases": aliases,
+            "tabelas": _vtabelas(d.get("tabelas"))}
 
 
 # =====================================================================================================
@@ -1525,6 +1584,58 @@ class _Render:
         return buf.getvalue()
 
 
+def _grade_para_sub(it):
+    """Componente Tabela (grade): vira um sub-relatório com uma linha de títulos e uma linha por registro."""
+    cols = it.get("colunas") or []
+    total = sum(c["largura"] for c in cols) or 1
+    fator = it["w"] / total
+    f = it.get("fonte") or {"nome": "Arial", "tam": 8.0, "n": False, "i": False, "s": False, "cor": "#000000"}
+    alt = it.get("alt_linha") or 5.0
+    pad = 0.8
+    ty = max((alt - (f.get("tam") or 8) * 0.3528 * 1.2) / 2, 0)    # texto centralizado na altura da linha
+    cab, det, x = [], [], 0.0
+    for c in cols:
+        w = c["largura"] * fator
+        base = {"y": ty, "h": alt - ty, "nome": "", "auto": False, "quebra": False, "branco_zero": False, "alin": c["alin"]}
+        if it.get("bordas", True):
+            borda = {"tipo": "retangulo", "x": x, "y": 0.0, "w": w, "h": alt, "nome": "", "forma": "retangulo",
+                     "cor": it.get("cor_borda") or "#999999", "espessura": 0.5}
+            cab.append({**borda, "fundo": it.get("cab_fundo")})
+            det.append({**borda, "fundo": None})
+        elif it.get("cab_fundo"):
+            cab.append({"tipo": "retangulo", "x": x, "y": 0.0, "w": w, "h": alt, "nome": "", "forma": "retangulo",
+                        "cor": it["cab_fundo"], "espessura": 0, "fundo": it["cab_fundo"]})
+        cab.append({**base, "tipo": "texto", "x": x + pad, "w": max(w - 2 * pad, 0.5), "texto": c["titulo"] or c["campo"],
+                    "fonte": {**f, "n": True}, "fundo": None, "formato": ""})
+        det.append({**base, "tipo": "campo", "x": x + pad, "w": max(w - 2 * pad, 0.5), "campo": c["campo"],
+                    "visao": it.get("visao"), "esticar": False, "fonte": dict(f), "fundo": None, "formato": c["formato"]})
+        x += w
+    bandas = {"detalhe": {"altura": alt, "visivel": True, "dinamica": True, "itens": det}}
+    if it.get("cabecalho", True):
+        bandas["titulo"] = {"altura": alt, "visivel": True, "dinamica": True, "itens": cab}
+    return {"tipo": "sub", "x": it["x"], "y": it["y"], "w": it["w"], "h": it["h"], "nome": it.get("nome") or "",
+            "secao": {"visao": it.get("visao"), "bandas": bandas, "grupos": [], "titulo_antes": True}}
+
+
+def expandir_grades(d):
+    """Troca cada componente Tabela por um sub-relatório equivalente (o desenho já validado)."""
+    def banda(b):
+        if b:
+            b["itens"] = [(_grade_para_sub(i) if i["tipo"] == "grade" else i) for i in b["itens"]]
+            for i in b["itens"]:
+                if i["tipo"] == "sub":
+                    secao(i["secao"])
+
+    def secao(sc):
+        for b in sc["bandas"].values():
+            banda(b)
+        for g in sc.get("grupos") or []:
+            banda(g.get("cab"))
+            banda(g.get("rod"))
+    secao(d["relatorio"])
+    return d
+
+
 def gerar_pdf(desenho, visoes, titulo="", parametros=None, info_visoes=None):
     """visoes: lista [{nome, colunas, linhas}] (resultado do relatorios_rb.executar);
     info_visoes: [{nome, mestre, ligacoes}] (do catálogo) para ligar mestre/detalhe."""
@@ -1534,8 +1645,8 @@ def gerar_pdf(desenho, visoes, titulo="", parametros=None, info_visoes=None):
         i = info.get(v["nome"].upper(), {})
         fontes[v["nome"]] = _Fonte(v["nome"], v.get("colunas") or [], v.get("linhas") or [],
                                    (i.get("mestre") or "").upper() or None, i.get("ligacoes"))
-    d = validar(desenho)
-    r1 = _Render(validar(desenho), fontes, titulo, parametros)
+    d = expandir_grades(validar(desenho))
+    r1 = _Render(expandir_grades(validar(desenho)), fontes, titulo, parametros)
     r1.gerar()
     r2 = _Render(d, fontes, titulo, parametros)
     pdf = r2.gerar(total_paginas=r1.pagina)

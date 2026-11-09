@@ -1,0 +1,20 @@
+{
+  "src/componentes/Designer.tsx": {
+    "file": "assets/Designer-e49AC39_.js",
+    "name": "Designer",
+    "src": "src/componentes/Designer.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/main.tsx"
+    ]
+  },
+  "src/main.tsx": {
+    "file": "assets/main-CVQcIWgN.js",
+    "name": "main",
+    "src": "src/main.tsx",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/componentes/Designer.tsx"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="csrf" content="{{ dados.csrf }}">
+  <title>{{ dados.titulo }} · TP DASH</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f5fae'/%3E%3Crect x='7' y='16' width='4' height='9' rx='1' fill='white'/%3E%3Crect x='14' y='10' width='4' height='15' rx='1' fill='white'/%3E%3Crect x='21' y='6' width='4' height='19' rx='1' fill='white'/%3E%3C/svg%3E">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#13253d">
+  <link rel="apple-touch-icon" href="/static/icone-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TP DASH">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  {# tema salvo, service worker e instalação como app: roda antes de desenhar a página #}
+  <script src="{{ url_for('static', filename='cabeca.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script type="module" src="{{ url_for('static', filename=js) }}"></script>
+</head>
+<body{% if dados.tela in ('login', 'trocar_senha') %} class="login-pag"{% endif %}>
+<div id="raiz"></div>
+<script type="application/json" id="tpdash-dados">{{ dados|tojson }}</script>
+<noscript><p style="padding:24px">O TP DASH precisa do JavaScript ligado no navegador.</p></noscript>
+</body>
+</html>

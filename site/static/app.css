@@ -540,11 +540,45 @@ body.dz-aberto { overflow: hidden; }
 .btn.perigo { color: var(--critico); border-color: var(--critico); }
 .dz-msg { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 90; padding: 10px 16px; border-radius: 8px; color: #fff; background: var(--critico); box-shadow: 0 6px 20px rgba(0,0,0,.3); font-size: 14px; }
 .dz-msg.ok { background: #1a7f37; }
+.dz-item.t-grade { background: rgba(42,120,214,.04); outline: 1px dashed #2a78d6; color: #000; line-height: normal; }
+.dz-item.t-grade.sel { outline: 2px solid #2a78d6; }
+.dz-grade-lin { display: flex; }
+.dz-grade-cel { box-sizing: border-box; border: 1px solid; margin: 0 -1px -1px 0; padding: 0 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: none; }
+.dz-grade-lin.dados .dz-grade-cel { color: #777; }
+.dz-grade-vis { position: absolute; right: 2px; bottom: 1px; font: 10px Arial, sans-serif; color: #1f5fae; background: rgba(255,255,255,.85); padding: 0 3px; border-radius: 3px; }
+.dz-grade-cols { display: flex; flex-direction: column; gap: 6px; }
+.dz-grade-col { border: 1px solid var(--borda); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.dz-grade-col code { flex: 1; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.dz-grade-col input, .dz-dir .dz-linha > select:only-of-type { border: 1px solid var(--borda); border-radius: 6px; padding: 4px 6px; background: var(--superficie); color: var(--texto); font: inherit; font-size: 12.5px; min-width: 0; box-sizing: border-box; }
+.dz-grade-col .dz-grade-tit { flex: 2; }
+.dz-grade-col input[type=number] { flex: 1; width: 0; }
+.dz-grade-col > input { width: 100%; }
+.dz-tabelas { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.dz-tabela-item { border: 1px solid var(--borda); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
+.dz-tabela-item strong { font-family: ui-monospace, Consolas, monospace; font-size: 12px; display: block; }
+.dz-tabela-item .dz-nota { margin: 0; display: block; }
+.dz-add-tabela { width: 100%; }
+.dz .modal-fundo { z-index: 95; }
+.dz-janela h3 { font-size: 13px; margin: 0 0 6px; }
+.dz-tab-grade { display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px; }
+.dz-tab-grade section { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dz-picker { border: 1px solid var(--borda); border-radius: 6px; height: 240px; overflow: auto; padding: 4px; display: flex; flex-direction: column; }
+.dz-opcao { border: 0; background: none; text-align: left; padding: 4px 8px; border-radius: 4px; font: 12px ui-monospace, Consolas, monospace; color: var(--texto); cursor: pointer; }
+.dz-opcao:hover:not(:disabled) { background: var(--acento-suave); }
+.dz-opcao.ativa { background: var(--acento); color: var(--acento-texto); }
+.dz-opcao:disabled { opacity: .4; cursor: default; }
+.dz-opcao-campo { display: flex; align-items: center; gap: 6px; padding: 3px 6px; font: 12px ui-monospace, Consolas, monospace; }
+.dz-opcao-campo i { color: var(--texto-3); font-style: normal; margin-left: auto; font-size: 11px; }
+.dz-tab-lig { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.dz-par-lig > select { flex: 1; }
+.dz-janela .dz-linha input.campo { flex: 1; }
 @media (max-width: 900px) {
   .dz-corpo { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
   .dz-esq { max-height: 22vh; border-right: 0; border-bottom: 1px solid var(--borda); }
   .dz-dir { max-height: 30vh; border-left: 0; border-top: 1px solid var(--borda); }
   .dz-centro { padding: 0 8px 20px; }
+  .dz-tab-grade { grid-template-columns: 1fr; }
+  .dz-picker { height: 160px; }
 }
 
 .cartao.clicavel { cursor: pointer; transition: box-shadow .15s, border-color .15s; }
@@ -711,3 +745,6 @@ body:has(#instalar-app) .chat-fab { bottom: 80px; }
 /* de onde vieram os dados (cópia no site ou servidor da empresa) */
 .dados-de { font-size: 11.5px; color: var(--texto-3); white-space: nowrap; }
 @media (max-width: 700px) { .dados-de { display: none; } }
+
+/* telas em React: o #raiz não muda o layout da página */
+#raiz { display: contents; }
