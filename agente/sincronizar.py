@@ -44,10 +44,10 @@ CHAVES_CONHECIDAS = {
 }
 # colunas que nunca saem do servidor do cliente (senhas, certificados, tokens de acesso)
 SENSIVEIS = re.compile(r"SENHA|PASSWORD|TOKEN|CERTIFICADO|CSRT|SISDEVHASH|INTEGRATIONKEY|USUARIOSPC", re.I)
-PACOTE = 2000                 # linhas por envio
+PACOTE = 500                  # linhas por envio (padrão; [sincronizacao] pacote no config.ini muda)
 INTERVALOS = (5, 10, 15, 30, 60, 120, 240)
 
-PADRAO = {"ativa": True, "intervalo_min": 15, "pausa_inicio": "", "pausa_fim": ""}
+PADRAO = {"ativa": True, "intervalo_min": 15, "pausa_inicio": "", "pausa_fim": "", "pacote": PACOTE}
 
 
 def ler_config():
@@ -69,6 +69,7 @@ def ler_config():
         cfg["intervalo_min"] = s.get("intervalo_min", cfg["intervalo_min"])
         cfg["pausa_inicio"] = s.get("pausa_inicio", "")
         cfg["pausa_fim"] = s.get("pausa_fim", "")
+        cfg["pacote"] = s.get("pacote", cfg["pacote"])
     return _validar(cfg)
 
 
@@ -81,6 +82,10 @@ def _validar(cfg):
         v = str(cfg.get(k) or "").strip()
         cfg[k] = v if re.match(r"^\d{1,2}:\d{2}$", v) else ""
     cfg["ativa"] = bool(cfg.get("ativa", True))
+    try:      # linhas por envio: pacotes menores usam menos memória no site (plano grátis do Render)
+        cfg["pacote"] = min(5000, max(50, int(float(cfg.get("pacote") or PACOTE))))
+    except (TypeError, ValueError):
+        cfg["pacote"] = PACOTE
     return cfg
 
 
@@ -348,6 +353,7 @@ class Sincronizador:
         r = {"inseridas": 0, "alteradas": 0, "apagadas": 0, "linhas": 0}
         vistas = set()
         buf, buf_foto = [], []
+        pacote = ler_config()["pacote"]
         base = {"tabela": tabela, "colunas": cols, "chave": chave if pos_chave else []}
 
         def enviar(apagadas=(), fim=False):
@@ -363,7 +369,7 @@ class Sincronizador:
             return resp
 
         try:
-            for _, linhas in banco.percorrer(sql, params, PACOTE):
+            for _, linhas in banco.percorrer(sql, params, pacote):
                 for linha in linhas:
                     h = _hash(linha)
                     k = json.dumps([linha[i] for i in pos_chave] if pos_chave else h, default=str,
@@ -376,14 +382,14 @@ class Sincronizador:
                     r["alteradas" if k in antes else "inseridas"] += 1
                     buf.append([k, linha])
                     buf_foto.append((k, h))
-                    if len(buf) >= PACOTE:
+                    if len(buf) >= pacote:
                         enviar()
             r["linhas"] = len(vistas)
             sumidas = [k for k in antes if k not in vistas]
             r["apagadas"] = len(sumidas)
-            for i in range(0, max(len(sumidas), 1), PACOTE * 5):
-                ultimo = i + PACOTE * 5 >= len(sumidas)
-                resp = enviar(sumidas[i:i + PACOTE * 5], fim=ultimo)
+            for i in range(0, max(len(sumidas), 1), pacote * 5):
+                ultimo = i + pacote * 5 >= len(sumidas)
+                resp = enviar(sumidas[i:i + pacote * 5], fim=ultimo)
             if resp.get("linhas_tabela") is not None and resp["linhas_tabela"] != len(vistas):
                 log.warning("[%s] %s: o site tem %s linhas e o banco %s. Refazendo a carga desta tabela.",
                             self.eid, tabela, resp["linhas_tabela"], len(vistas))
