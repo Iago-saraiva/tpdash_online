@@ -18,6 +18,7 @@ import re
 import struct
 
 VERSAO = 1
+VERSAO_IMPORTADOR = 2      # sobe quando o leitor do modelo do ReportBuilder melhora (o painel converte de novo)
 TIPOS_BANDA = ("titulo", "cabecalho", "detalhe", "sumario", "rodape")
 TIPOS_ITEM = ("texto", "campo", "memo", "total", "variavel", "sistema", "linha", "retangulo", "sub", "grade")
 SISTEMA = ("data", "hora", "datahora", "pagina", "paginas", "pagina_desc", "pagina_de", "pagina_x_de_y")
@@ -76,6 +77,12 @@ def _codigos(arvore):
     saida = {}
 
     def andar(o):
+        if o["classe"] == "TraProgramInfo":
+            # ReportBuilder novo: cada evento é um objeto filho do módulo de código
+            p = o["props"]
+            comp, ev, src = p.get("raProgram.ComponentName"), p.get("raProgram.EventName"), p.get("raProgram.Source")
+            if comp and isinstance(src, str) and src.strip() and (ev or "OnCalc") == "OnCalc":
+                saida.setdefault(comp, src)
         if o["classe"] == "TraCodeModule":
             ps = o["props"].get("ProgramStream")
             if isinstance(ps, (bytes, bytearray)):
@@ -228,7 +235,12 @@ def importar(template):
         arv = _Leitor(bytes(template), 4).objeto()
     except Exception:  # noqa: BLE001 - modelo diferente / corrompido
         return None
-    if arv["classe"] != "TppReport":
+    return importar_arvore(arv)
+
+
+def importar_arvore(arv):
+    """Árvore do modelo (objetos e propriedades, binário ou texto) -> desenho."""
+    if not arv or arv.get("classe") != "TppReport":
         return None
     p = arv["props"]
     larg, alt = _mm(p.get("PrinterSetup.mmPaperWidth")) or 210.0, _mm(p.get("PrinterSetup.mmPaperHeight")) or 297.0
@@ -1170,7 +1182,8 @@ class _Render:
                             self.avisos.add(f"{it.get('nome')}: {e}")
                         est = {"it": it, "arv": arv, "erro": erro, "valor": self._zero(it), "sec": s["_id"]}
                         it["_est"] = est
-                        if nome:
+                        self.ests.append(est)            # todas calculam, mesmo com nome repetido
+                        if nome and nome not in self.vars:
                             self.vars[nome] = est
                     elif it["tipo"] == "sub":
                         andar(it["secao"])
@@ -1188,9 +1201,14 @@ class _Render:
             yield g["cab"]
             yield g["rod"]
 
-    def calcular(self, sec, evento, grupo=None):
-        ests = [e for e in self.vars.values() if e["sec"] == sec.get("_id") and e["it"]["calc_tipo"] == evento
+    def calcular(self, sec, evento, grupo=None, linha=None):
+        """linha: no percurso, a linha atual; cada cálculo roda uma vez por linha (o 1º cabeçalho já calcula a 1ª)."""
+        ests = [e for e in self.ests if e["sec"] == sec.get("_id") and e["it"]["calc_tipo"] == evento
                 and (grupo is None or e["it"].get("calc_grupo") in (grupo, None))]
+        if linha is not None:
+            ests = [e for e in ests if e.get("_ult") is not linha]
+            for e in ests:
+                e["_ult"] = linha
         ests.sort(key=lambda e: e["it"].get("ordem", 0))
         ctx = Contexto(self.campo_rap, self.vars, self.aliases, self.parametros)
         for e in ests:
@@ -1202,7 +1220,7 @@ class _Render:
                 self.avisos.add(f"{e['it'].get('nome')}: {ex}")
 
     def zerar(self, sec, evento, grupo=None):
-        for e in self.vars.values():
+        for e in self.ests:
             if e["sec"] == sec.get("_id") and e["it"]["reset_tipo"] == evento and \
                     (grupo is None or e["it"].get("reset_grupo") in (grupo, None)):
                 e["valor"] = self._zero(e["it"])
@@ -1459,7 +1477,18 @@ class _Render:
         self.y += resto_alt
 
     # ---------------------------------------------------------------- seção (relatório ou sub-relatório)
-    def secao(self, sec, sub=False, x0=0.0):
+    def _pre_percurso(self, sec, vis, linhas):
+        """Como no ReportBuilder: o título e os cabeçalhos já saem com os cálculos da 1ª linha."""
+        if linhas and linhas[0]:
+            antes = self.atual.get(vis)
+            self.atual[vis] = linhas[0]
+            self.calcular(sec, "percurso", linha=linhas[0])
+            if antes is None:
+                self.atual.pop(vis, None)
+            else:
+                self.atual[vis] = antes
+
+    def secao(self, sec, sub=False, x0=0.0, principal=False):
         if x0:
             sec = self._deslocar_x(sec, x0)
         f = self.fonte(sec.get("visao"))
@@ -1475,8 +1504,13 @@ class _Render:
             if not linhas:
                 return
         escopo = {"_tudo": linhas}
-        self.zerar(sec, "inicio")
-        self.calcular(sec, "inicio")
+        if not principal:
+            for e in self.ests:              # o sub-relatório recomeça: as linhas podem se repetir
+                if e["sec"] == sec.get("_id"):
+                    e.pop("_ult", None)
+            self.zerar(sec, "inicio")
+            self.calcular(sec, "inicio")
+        self._pre_percurso(sec, vis, linhas)
         if sub:
             for t in ("titulo", "cabecalho"):
                 if bandas.get(t):
@@ -1504,6 +1538,11 @@ class _Render:
                 for k in range(mudou, len(grupos)):
                     inicio_grupo[k] = idx
                     self.zerar(sec, "inicio_grupo", k)
+            # a linha entra no cálculo antes dos cabeçalhos de grupo (no RB o cabeçalho já mostra os valores dela)
+            self.atual[vis] = l
+            self.calcular(sec, "percurso", linha=l)
+            if mudou is not None:
+                for k in range(mudou, len(grupos)):
                     if grupos[k].get("nova_pagina") and idx > 0 and not sub:
                         self.nova_pagina()
                     self.atual[vis] = l
@@ -1515,7 +1554,6 @@ class _Render:
                     self.calcular(sec, "inicio_grupo", k)
                 chaves = novas
             self.atual[vis] = l
-            self.calcular(sec, "percurso")
             escopo["_banda"] = [l]
             self.desenhar_banda(detalhe, sec, escopo)
         if linhas and grupos:
@@ -1569,19 +1607,53 @@ class _Render:
         self.total_paginas = total_paginas
         self.pagina = 0
         self.vars = {}
+        self.ests = []
         self.atual = {}
         rel = self.d["relatorio"]
         self.preparar_vars(rel)
         self._titulo_antes = rel.get("titulo_antes", True)
         tb = rel["bandas"].get("titulo")
         self._titulo_pendente = bool(tb and tb.get("visivel", True) and (tb["altura"] > 0 or tb["itens"]))
+        self.zerar(rel, "inicio")
         self.calcular(rel, "inicio")       # cálculos "no início" já valem para o 1º cabeçalho
+        f = self.fonte(rel.get("visao"))
+        self._pre_percurso(rel, (rel.get("visao") or "").upper(), f.linhas if f is not None else [])
         self.nova_pagina(primeira=True)
-        self.secao(rel)
+        self.secao(rel, principal=True)
         self.fechar_pagina()
         self.c.showPage()
         self.c.save()
         return buf.getvalue()
+
+
+def _variaveis(d):
+    """Todas as variáveis (cálculos) do desenho, inclusive dos sub-relatórios."""
+    saida = []
+
+    def secao(sc):
+        for b in list((sc.get("bandas") or {}).values()) + [g.get(k) for g in sc.get("grupos") or [] for k in ("cab", "rod")]:
+            for i in (b or {}).get("itens") or []:
+                if i.get("tipo") == "variavel":
+                    saida.append(i)
+                elif i.get("tipo") == "sub" and i.get("secao"):
+                    secao(i["secao"])
+    secao((d or {}).get("relatorio") or {})
+    return saida
+
+
+def completar_codigos(salvo, original):
+    """Layouts salvos antes de o painel ler o código de todas as versões do ReportBuilder ficaram com
+    cálculos vazios: completa com o código do original (mesmo nome de variável). Devolve o desenho."""
+    if not salvo or not original:
+        return salvo
+    cods = {}
+    for v in _variaveis(original):
+        if (v.get("codigo") or "").strip():
+            cods.setdefault((v.get("nome") or "").lower(), v["codigo"])
+    for v in _variaveis(salvo):
+        if not (v.get("codigo") or "").strip() and (v.get("nome") or "").lower() in cods:
+            v["codigo"] = cods[(v.get("nome") or "").lower()]
+    return salvo
 
 
 def _grade_para_sub(it):

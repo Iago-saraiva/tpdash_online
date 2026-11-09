@@ -487,6 +487,8 @@ def sincronizar(banco, forcar=False, bid="principal"):
 
         fonte = {} if forcar else _ler(FONTE, {})
         desenhos_rb = {} if forcar else _ler(DESENHOS, {})
+        if st.get("versao_desenho") != getattr(_desenho, "VERSAO_IMPORTADOR", 1):
+            desenhos_rb = {}      # leitor de layouts melhorou: converte de novo todos os layouts (as consultas ficam)
         atuais, novos, alterados, erros = {}, [], [], []
         for iid, fid, nome, mod in itens_l:
             rid = f"{iid}-{fid if fid >= 0 else 'x'}"
@@ -543,7 +545,8 @@ def sincronizar(banco, forcar=False, bid="principal"):
         res = {"novos": len(novos), "alterados": len(alterados), "removidos": len(removidos), "erros": erros[:50],
                "total": len(catalogo), "segundos": round(time.time() - inicio, 1),
                "nomes_novos": [atuais[r][2] for r in novos][:30], "nomes_alterados": [atuais[r][2] for r in alterados][:30]}
-        st = {"andamento": False, "ultima": dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "resultado": res}
+        st = {"andamento": False, "ultima": dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "resultado": res,
+              "versao_desenho": getattr(_desenho, "VERSAO_IMPORTADOR", 1)}
         if novos or alterados or removidos:
             st["ultima_mudanca"] = st["ultima"]
             st["resultado_mudanca"] = res

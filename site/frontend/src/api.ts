@@ -98,6 +98,15 @@ export async function baixar(url: string, json?: unknown) {
   setTimeout(() => URL.revokeObjectURL(href), 60000);
 }
 
+/** Envia um arquivo (corpo cru da requisição) e devolve o JSON da resposta. */
+export async function enviarArquivo<T = unknown>(url: string, arquivo: Blob): Promise<T> {
+  const r = await buscar(url, { method: "POST", headers: { "X-Painel": DADOS.csrf, "Content-Type": "application/octet-stream" }, body: arquivo });
+  let d: unknown = null;
+  try { d = await r.json(); } catch { /* sem JSON */ }
+  if (!r.ok) throw new Error((d as { erro?: string } | null)?.erro || (r.status === 413 ? "Arquivo grande demais." : `Erro ${r.status}`));
+  return d as T;
+}
+
 /** /api/opcoes (filiais, tipos de movimento...) uma vez só por página */
 let cacheOpcoes: Promise<Opcoes> | null = null;
 export interface Codigo { cod: string; nome?: string }

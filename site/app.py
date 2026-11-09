@@ -3,6 +3,7 @@ import datetime as dt
 import functools
 import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -1360,9 +1361,15 @@ def _desenho_original(r):
     return rb_sync.desenhos(_bid()).get(r["id"]) or None
 
 
+def _layout_salvo(r):
+    """Layout salvo no painel, com os cálculos vazios completados pelo original do ReportBuilder."""
+    salvo = usuarios.obter_layout(_chave_desenho(r))
+    return desenho_mod.completar_codigos(salvo, _desenho_original(r)) if salvo else None
+
+
 def _desenho_efetivo(r):
     """Layout de impressão salvo no painel ou, se não houver, o original do ReportBuilder."""
-    return usuarios.obter_layout(_chave_desenho(r)) or _desenho_original(r)
+    return _layout_salvo(r) or _desenho_original(r)
 
 
 def _com_tabelas(r, d):
@@ -1394,7 +1401,7 @@ def api_desenho_abrir(rid):
         abort(404)
     valores, _ = _rb_valores(r)
     base = (request.get_json(silent=True) or {}).get("base")
-    salvo = None if base in ("original", "padrao") else usuarios.obter_layout(_chave_desenho(r))
+    salvo = None if base in ("original", "padrao") else _layout_salvo(r)
     original = None if base == "padrao" else _desenho_original(r)
     rt = _com_tabelas(r, salvo or original or {})        # tabelas do banco acrescentadas no editor
     campos, numeros = {}, {}
@@ -1455,6 +1462,88 @@ def api_desenho_excluir(rid):
     usuarios.excluir_layout(_chave_desenho(r))
     usuarios.registrar(g.usuario["login"], "layout de impressão restaurado", r["nome"])
     return jsonify(ok=True, tem_original=bool(_desenho_original(r)))
+
+
+def _modelo_rb(r):
+    """Modelo original do ReportBuilder (RB_ITEM.TEMPLATE) do relatório, ou None (relatórios padrão do painel)."""
+    if r.get("desenho"):
+        return None
+    m = re.match(r"^(\d+)-(\d+|x)$", str(r["id"]))
+    if not m:
+        return None
+    iid = int(m.group(1))
+    if m.group(2) == "x":
+        sql, par = ("SELECT TEMPLATE FROM RB_ITEM WHERE ITEM_ID = ? AND FOLDER_ID < 0 "
+                    "AND (DELETED IS NULL OR DELETED = 0) ORDER BY MODIFIED DESC"), (iid,)
+    else:
+        sql, par = ("SELECT TEMPLATE FROM RB_ITEM WHERE ITEM_ID = ? AND FOLDER_ID = ? "
+                    "AND (DELETED IS NULL OR DELETED = 0) ORDER BY MODIFIED DESC"), (iid, int(m.group(2)))
+    _, t, _ = banco().consultar_blob(sql, par)
+    return t[0][0] if t and t[0][0] else None
+
+
+@app.route("/api/rb/<rid>/desenho/rtm", methods=["POST"])
+@exige("relatorios")
+def api_desenho_rtm(rid):
+    """Baixa o layout (o enviado pela tela ou o efetivo) como arquivo .rtm do ReportBuilder.
+    Parte do modelo original do ERP (consultas, parâmetros e configurações ficam) e troca só o layout."""
+    import rtm
+    r = relatorios_rb.obter(rid)
+    if not _rb_permitido(r):
+        abort(404)
+    if not _pode_editar_layout():
+        abort(403)
+    d = (request.get_json(silent=True) or {}).get("desenho") or _desenho_efetivo(r)
+    if not d:
+        return jsonify(erro="Este relatório não tem layout de impressão."), 400
+    try:
+        original = _modelo_rb(r)
+    except db.ErroBanco as e:
+        return jsonify(erro=str(e)), 400
+    try:
+        conteudo = rtm.exportar(d, original)
+    except ValueError as e:
+        return jsonify(erro=str(e)), 400
+    usuarios.registrar(g.usuario["login"], "layout exportado (.rtm)", r["nome"])
+    import unicodedata
+    arq = unicodedata.normalize("NFKD", r["nome"]).encode("ascii", "ignore").decode()
+    arq = re.sub(r'[\\/:*?"<>|;]+', "_", arq).strip(" ._") or "relatorio"
+    return Response(conteudo, mimetype="application/octet-stream", headers={
+        "Content-Disposition": f'attachment; filename="{arq}.rtm"',
+        "X-Content-Type-Options": "nosniff",
+        "X-Rtm-Modelo": "original" if original else "layout"})
+
+
+@app.route("/api/rb/<rid>/desenho/rtm/importar", methods=["POST"])
+@exige("relatorios")
+def api_desenho_rtm_importar(rid):
+    """Lê um arquivo .rtm enviado (corpo da requisição) e devolve o desenho para o editor (não salva)."""
+    import rtm
+    r = relatorios_rb.obter(rid)
+    if not _rb_permitido(r):
+        abort(404)
+    if not _pode_editar_layout():
+        abort(403)
+    arq = request.files.get("arquivo")
+    conteudo = arq.read() if arq else request.get_data()
+    if not conteudo:
+        return jsonify(erro="Nenhum arquivo enviado."), 400
+    try:
+        d, pipes = rtm.importar(conteudo)
+        d = desenho_mod.validar(d)
+    except Exception as e:  # noqa: BLE001 - arquivo de outro formato / corrompido
+        return jsonify(erro=str(e) if isinstance(e, ValueError) else "Não foi possível ler este arquivo .rtm."), 400
+    atual = _desenho_efetivo(r) or {}
+    if not d["relatorio"].get("visao") and atual.get("relatorio", {}).get("visao"):
+        d["relatorio"]["visao"] = atual["relatorio"]["visao"]
+    if not d.get("aliases") and atual.get("aliases"):
+        d["aliases"] = atual["aliases"]
+    if atual.get("tabelas") and not d.get("tabelas"):
+        d["tabelas"] = atual["tabelas"]
+    nomes = {v["nome"].upper() for v in _com_tabelas(r, d)["visoes"]}
+    faltam = sorted(x for x in rtm.visoes_usadas(d) if x.upper() not in nomes)
+    usuarios.registrar(g.usuario["login"], "layout importado (.rtm)", r["nome"])
+    return jsonify(desenho=d, faltam=faltam)
 
 
 @app.route("/api/rb/<rid>/desenho/pdf", methods=["POST"])

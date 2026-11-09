@@ -2,7 +2,7 @@
 // itens posicionados em milímetros, arrastar/redimensionar, propriedades, sub-relatórios, tabelas do banco e PDF.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as PE, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { api, baixar } from "../api";
+import { api, baixar, enviarArquivo } from "../api";
 
 const PX_MM = 96 / 25.4;              // pixels por mm com zoom 100%
 const PT_MM = 25.4 / 72;              // mm por ponto (tamanho de fonte)
@@ -330,8 +330,35 @@ export function Designer({ rid, nome, valores, fechar }: { rid: string; nome: st
       try { await api(`/api/rb/${encodeURIComponent(rid)}/desenho/excluir`, {}); sujo.current = false; carregar(); } catch (e) { alerta((e as Error).message); }
       return;
     }
+    if (v === "rtm") {
+      try { await baixar(`/api/rb/${encodeURIComponent(rid)}/desenho/rtm`, { desenho: clone(D.current) }); }
+      catch (e) { alerta((e as Error).message); }
+      return;
+    }
+    if (v === "rtm_importar") { arqRtm.current?.click(); return; }
     if (sujo.current && !confirm("Descartar as alterações atuais?")) return;
     carregar(v);
+  }
+  const arqRtm = useRef<HTMLInputElement>(null);
+  async function importarRtm(arq: File | undefined) {
+    if (arqRtm.current) arqRtm.current.value = "";
+    if (!arq || !info) return;
+    if (sujo.current && !confirm("Substituir o layout que está na tela pelo do arquivo? As alterações não salvas serão perdidas.")) return;
+    try {
+      const x = await enviarArquivo<{ desenho: Desenho; faltam: string[] }>(`/api/rb/${encodeURIComponent(rid)}/desenho/rtm/importar`, arq);
+      guardar();                                   // dá para desfazer (Ctrl+Z) a importação
+      D.current = x.desenho;
+      D.current.tabelas = D.current.tabelas || [];
+      chaves(D.current.relatorio);
+      setPilha([D.current.relatorio]); setSelecao([]); setBandaSel(null);
+      setInfo(comTabelas(info, D.current.tabelas));
+      precisaZoom.current = true;
+      sujo.current = true;
+      alerta("Layout do arquivo carregado. Confira e clique em Salvar para manter." +
+        (x.faltam.length ? " Atenção: este relatório não tem as fontes de dados " + x.faltam.join(", ") + " (os campos delas sairão vazios)." : ""),
+        x.faltam.length ? "erro" : "ok");
+      r();
+    } catch (e) { alerta((e as Error).message); }
   }
 
   // ------------------------------------------------------------------ arrastar / redimensionar
@@ -836,8 +863,11 @@ export function Designer({ rid, nome, valores, fechar }: { rid: string; nome: st
           <option value="">Mais…</option>
           {info.tem_original && <option value="original">Recomeçar do original do ReportBuilder</option>}
           <option value="padrao">Recomeçar com layout em tabela</option>
+          {info.pode_editar && <option value="rtm">Exportar .rtm (ReportBuilder)</option>}
+          {info.pode_editar && <option value="rtm_importar">Importar .rtm…</option>}
           {info.tem_salvo && info.pode_editar && <option value="excluir">{"Apagar o layout salvo (voltar ao " + (info.tem_original ? "original do RB" : "PDF em tabela") + ")"}</option>}
         </select>
+        <input ref={arqRtm} type="file" accept=".rtm" hidden onChange={(e) => importarRtm(e.target.files?.[0])} />
         <div className="dz-zoom">
           <button className="btn pequeno" onClick={() => setZoom((z) => Math.max(0.4, z - 0.1))}>−</button>
           <span>{Math.round(zoom * 100) + "%"}</span>
