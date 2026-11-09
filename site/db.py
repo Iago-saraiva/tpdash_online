@@ -49,7 +49,7 @@ def _normalizar(v):
 # --------------------------------------------------------------------- SQL livre
 _PROIBIDAS = re.compile(
     r"\b(INSERT|UPDATE|DELETE|MERGE|UPSERT|DROP|ALTER|CREATE|RECREATE|GRANT|REVOKE|EXECUTE|EXEC|"
-    r"COMMIT|ROLLBACK|SET|DECLARE|TRUNCATE|REPLACE)\b",
+    r"COMMIT|ROLLBACK|SET|DECLARE|TRUNCATE|REPLACE)\b(?<!REPLACE)|\b(REPLACE)\b(?!\s*\()",
     re.IGNORECASE,
 )
 
@@ -72,9 +72,10 @@ def validar_select(sql):
         raise ErroBanco("Envie apenas uma consulta por vez (sem ';' no meio).")
     if not re.match(r"^(SELECT|WITH)\b", limpo, re.IGNORECASE):
         raise ErroBanco("Somente consultas SELECT (ou WITH ... SELECT) são permitidas.")
-    m = _PROIBIDAS.search(limpo)
+    # REPLACE(...) é a função de texto do Firebird e CHARACTER SET faz parte do CAST: não são comandos
+    m = _PROIBIDAS.search(re.sub(r"\bCHARACTER\s+SET\b", " ", limpo, flags=re.IGNORECASE))
     if m:
-        raise ErroBanco(f"Comando não permitido em consulta: {m.group(1).upper()}")
+        raise ErroBanco(f"Comando não permitido em consulta: {(m.group(1) or m.group(2)).upper()}")
     return sql.strip().rstrip(";")
 
 
