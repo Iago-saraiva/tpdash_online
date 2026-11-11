@@ -75,12 +75,57 @@ function TrocaEmpresa() {
   );
 }
 
-function alternarTema() {
-  const escuro = getComputedStyle(document.documentElement).colorScheme === "dark";
-  const novo = escuro ? "claro" : "escuro";
-  document.documentElement.dataset.tema = novo;
-  try { localStorage.setItem("tema", novo); } catch { /* */ }
+// Temas: o padrão (verde-água) não grava nada; os outros ficam salvos neste navegador.
+const TEMAS: [string, string, string][] = [
+  ["", "Verde-água", "linear-gradient(135deg, #18393b, #50d2be)"],
+  ["ameixa", "Ameixa", "linear-gradient(135deg, #261a2b, #d68cb6)"],
+  ["oceano", "Oceano", "linear-gradient(135deg, #12223d, #46a0f0)"],
+  ["grafite", "Grafite", "linear-gradient(135deg, #1b1e23, #96a5be)"],
+  ["por-do-sol", "Pôr do sol", "linear-gradient(135deg, #2b1812, #f58c50)"],
+  ["claro", "Claro", "linear-gradient(135deg, #ffffff, #dfe3e8)"],
+];
+
+function temaAtual() {
+  const t = document.documentElement.dataset.tema || "";
+  return t === "escuro" ? "" : t;
+}
+
+function aplicarTema(novo: string) {
+  if (novo) document.documentElement.dataset.tema = novo;
+  else delete document.documentElement.dataset.tema;
+  try { if (novo) localStorage.setItem("tema", novo); else localStorage.removeItem("tema"); } catch { /* */ }
   window.dispatchEvent(new Event("resize"));
+}
+
+function EscolherTema() {
+  const [aberto, setAberto] = useState(false);
+  const [atual, setAtual] = useState(temaAtual);
+  const caixa = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => { if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setAberto(false); };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc); };
+  }, [aberto]);
+  return (
+    <span className="temas-caixa" ref={caixa}>
+      <button className="btn pequeno" title="Escolher tema" aria-label="Escolher tema" aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(!aberto)}>
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" /></svg>
+      </button>
+      {aberto && (
+        <div className="temas-menu" role="menu" aria-label="Temas">
+          {TEMAS.map(([id, nome, cor]) => (
+            <button key={id || "padrao"} role="menuitemradio" aria-checked={atual === id}
+              onClick={() => { aplicarTema(id); setAtual(id); setAberto(false); }}>
+              <span className="amostra" style={{ background: cor }} />{nome}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
 }
 
 export function Layout({ titulo, avisos, aoRecarregar, children }: { titulo: string; avisos: ReactNode; aoRecarregar: () => void; children: ReactNode }) {
@@ -151,9 +196,7 @@ export function Layout({ titulo, avisos, aoRecarregar, children }: { titulo: str
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
               <span className="rot-instalar">Instalar app</span>
             </button>
-            <button className="btn pequeno" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro" onClick={alternarTema}>
-              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" /></svg>
-            </button>
+            <EscolherTema />
           </header>
           <section className="conteudo">
             {avisos}

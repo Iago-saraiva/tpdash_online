@@ -11,3 +11,7 @@
 #tabela-empresas tbody tr { cursor: pointer; }
 #tabela-empresas tbody tr.escolhida { background: var(--superficie-2); }
 @media (max-width: 900px) { .adm-topo { padding: 10px 16px; flex-wrap: wrap; } .conteudo { padding: 16px; } .grade > .cartao { grid-column: span 12 !important; } }
+/* o #raiz do TP DASH usa display: contents; no ADMIN o #raiz é o próprio <main class="conteudo"> e precisa do espaçamento */
+main#raiz.conteudo { display: flex; }
+.adm-resumo .num { font-size: clamp(24px, 2vw, 32px); }
+.adm-resumo .cartao { text-align: center; }
