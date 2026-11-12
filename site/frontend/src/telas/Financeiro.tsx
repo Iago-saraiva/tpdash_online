@@ -5,7 +5,7 @@ import { F } from "../formatos";
 import { Kpis } from "../componentes/Kpis";
 import { Barras, Colunas, type ItemBarra, type Serie } from "../componentes/Graficos";
 import { Tabela, type Celula, type DadosTabela } from "../componentes/Tabela";
-import { Atalhos, Escolha, Exportar, FormFiltros, MultiEscolha, Texto, useDados, useFiltros } from "../componentes/Filtros";
+import { Escolha, Exportar, FormFiltros, MultiEscolha, Periodo, Texto, useDados, useFiltros } from "../componentes/Filtros";
 
 interface Resp {
   kpis: { aberto: number; vencido: number; a_vencer_30: number; qtd: number; total: number };
@@ -35,14 +35,12 @@ export default function Financeiro() {
       <FormFiltros f={f}>
         <label>Tipo<Escolha f={f} nome="tipo" auto><option value="R">A receber</option><option value="P">A pagar</option><option value="T">Ambos</option></Escolha></label>
         <label>Situação<Escolha f={f} nome="status" auto><option value="A">Em aberto</option><option value="B">Baixados</option><option value="C">Cancelados</option><option value="*">Todos</option></Escolha></label>
+        <Periodo f={f} ini={ini} fim={fim} rotulo={"Período · " + (({ vencimento: "vencimento", emissao: "emissão", baixa: "baixa" } as Record<string, string>)[f.form.base] || "vencimento")} />
+        <label>Cliente / fornecedor<Texto f={f} nome="cliente" placeholder="código ou nome" className="largo" /></label>
         <label>Data base<Escolha f={f} nome="base"><option value="vencimento">Vencimento</option><option value="emissao">Emissão</option><option value="baixa">Baixa</option></Escolha></label>
-        <label>De<input type="date" name="ini" value={ini} onChange={(e) => f.set("ini", e.target.value)} /></label>
-        <label>Até<input type="date" name="fim" value={fim} onChange={(e) => f.set("fim", e.target.value)} /></label>
-        <Atalhos f={f} />
         <MultiEscolha f={f} nome="tipodoc" rotulo="Tipo de documento" lista={o?.tipos_doc || []} vazio="Todos os tipos" />
         <MultiEscolha f={f} nome="ccusto" rotulo="Centro de custo" lista={o?.ccustos || []} vazio="Todos" unidade="centros selecionados" />
         <MultiEscolha f={f} nome="depto" rotulo="Departamento" lista={o?.departamentos || []} vazio="Todos" unidade="departamentos selecionados" />
-        <label>Cliente / fornecedor<Texto f={f} nome="cliente" placeholder="código ou nome" className="largo" /></label>
         <label>Filial<Escolha f={f} nome="filial" auto lista={o?.filiais || []} vazio="Todas" /></label>
       </FormFiltros>
       <div className="kpis">

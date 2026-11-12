@@ -1,8 +1,8 @@
 // Filtros das telas de dados: ficam na URL (dá para copiar o link), período do topo, atalhos de datas,
 // escolha múltipla e o botão "Filtros" que recolhe tudo no celular.
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Children, createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, baixar, type Codigo } from "../api";
-import { iso } from "../formatos";
+import { fmtData, iso } from "../formatos";
 import { datasPeriodo, useNav, usePeriodo } from "../navegacao";
 import { useAvisar } from "./Avisos";
 
@@ -63,7 +63,7 @@ export function useFiltros(padrao: Valores, op: { periodo?: boolean } = {}) {
     history.replaceState(null, "", location.pathname + (consulta ? "?" + consulta : ""));
   }, [consulta]);
 
-  return { form, aplicado, consulta, versao, set, aplicar, limpar, setForm };
+  return { form, aplicado, consulta, versao, set, aplicar, limpar, setForm, padrao };
 }
 export type Filtros = ReturnType<typeof useFiltros>;
 
@@ -88,38 +88,145 @@ export function useDados<T>(url: string, f: Filtros, pronto = true) {
   return { dados, carregando };
 }
 
-/** Formulário de filtros. No celular fica recolhido atrás do botão "Filtros". */
-export function FormFiltros({ f, children, acoes = true, aoLimpar }: { f: Filtros; children: ReactNode; acoes?: boolean; aoLimpar?: () => void }) {
+/** Dentro do formulário de filtros os campos aplicam sozinhos (listas na hora, textos depois de uma pausa). */
+const AutoCtx = createContext(false);
+
+interface Chip { nome: string; rot: string; valor: string }
+
+/** Lê, nos campos do formulário, o rótulo e o texto de cada filtro preenchido (diferente do padrão). */
+function lerChips(form: HTMLFormElement, f: Filtros, semChip: string[]): Chip[] {
+  const vistos = new Set<string>();
+  const lista: Chip[] = [];
+  form.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[name]").forEach((el) => {
+    const nome = el.name;
+    if (!nome || vistos.has(nome) || semChip.includes(nome)) return;
+    const v = f.form[nome] || "";
+    if (v === (f.padrao[nome] || "")) return;
+    vistos.add(nome);
+    const lab = el.closest("label");
+    if (el instanceof HTMLInputElement && el.type === "checkbox") {
+      lista.push({ nome, rot: "", valor: (lab?.textContent || nome).trim() });
+      return;
+    }
+    const rot = (el.closest(".filtro-rot")?.querySelector("span")?.textContent
+      || (lab?.childNodes[0]?.nodeType === 3 ? lab.childNodes[0].textContent : "") || nome).trim();
+    let valor = v;
+    if (el instanceof HTMLSelectElement) valor = el.selectedOptions[0]?.text || v;
+    else if (el.type === "hidden") { const n = v.split(",").filter(Boolean); valor = n.length <= 2 ? n.join(", ") : `${n.length} selecionados`; }
+    lista.push({ nome, rot, valor });
+  });
+  return lista;
+}
+
+/**
+ * Formulário de filtros: os campos principais ficam à mostra e o resto em "Mais filtros".
+ * Aplica sozinho; os filtros em uso aparecem como etiquetas que se removem com um clique.
+ * No celular fica recolhido atrás do botão "Filtros".
+ */
+export function FormFiltros({ f, children, acoes = true, aoLimpar, principais = 4, extra, semChip = ["ini", "fim", "aba"] }: {
+  f: Filtros; children: ReactNode; acoes?: boolean; aoLimpar?: () => void; principais?: number; extra?: ReactNode; semChip?: string[];
+}) {
   const celular = typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches;
   const [recolhido, setRecolhido] = useState(celular);
-  const enviar = (e: FormEvent) => {
+  const [mais, setMais] = useState(false);
+  const [chips, setChips] = useState<Chip[]>([]);
+  const [ocultos, setOcultos] = useState(0);
+  const ref = useRef<HTMLFormElement>(null);
+  const itens = Children.toArray(children);
+  const dividir = !celular && itens.length - principais > 1;
+  const visiveis = dividir ? itens.slice(0, principais) : itens;
+  const resto = dividir ? itens.slice(principais) : [];
+
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const novos = lerChips(ref.current, f, semChip);
+    if (JSON.stringify(novos) !== JSON.stringify(chips)) setChips(novos);
+    const n = novos.filter((c) => ref.current?.querySelector(`.filtros-mais [name="${c.nome}"]`)).length;
+    if (n !== ocultos) setOcultos(n);
+  });
+
+  const enviar = (e: FormEvent) => { e.preventDefault(); f.aplicar(); };
+  // Teclado: ENTER aplica e passa para o próximo campo (SHIFT+ENTER volta); TAB segue a ordem normal.
+  const teclas = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    const alvo = e.target as HTMLElement;
+    if (e.key !== "Enter" || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (alvo.closest(".multi-painel, .periodo-painel")) return;          // painéis abertos tratam o próprio ENTER
+    if (!(alvo instanceof HTMLInputElement || alvo instanceof HTMLSelectElement)) return;
+    if (alvo instanceof HTMLInputElement && alvo.type === "checkbox") return;
     e.preventDefault();
-    if (celular) setRecolhido(true);
     f.aplicar();
+    const campos = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(
+      "input:not([type=hidden]):not([tabindex='-1']), select, .multi-botao, .periodo-botao"))
+      .filter((x) => !x.closest(".multi-painel, .periodo-painel, .filtros-mais:not(.aberto)") && x.offsetParent !== null);
+    const i = campos.indexOf(alvo);
+    const prox = campos[i + (e.shiftKey ? -1 : 1)];
+    if (prox) prox.focus();
   };
+  const limparTudo = () => (aoLimpar ? aoLimpar() : f.limpar());
+  const tirar = (nome: string) => f.aplicar({ [nome]: f.padrao[nome] || "" });
   return (
-    <>
+    <AutoCtx.Provider value={true}>
       {celular && (
-        <button type="button" className="btn filtros-toggle" onClick={() => setRecolhido((r) => !r)}>
-          {recolhido ? "Filtros ▾" : "Esconder filtros ▴"}
+        <button type="button" className={"btn filtros-toggle" + (recolhido ? "" : " aberto")} onClick={() => setRecolhido((r) => !r)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+          {recolhido ? "Filtros" : "Esconder filtros"}{chips.length > 0 && <span className="filtros-conta">{chips.length}</span>}
         </button>
       )}
-      <form className={"filtros" + (recolhido ? " recolhido" : "")} autoComplete="off" onSubmit={enviar}>
-        {children}
-        {acoes && (
-          <div className="acoes">
-            <button type="button" className="btn" onClick={() => (aoLimpar ? aoLimpar() : f.limpar())}>Limpar</button>
-            <button className="btn primario">Aplicar</button>
+      <form ref={ref} className={"filtros" + (recolhido ? " recolhido" : "")} autoComplete="off" onSubmit={enviar} onKeyDown={teclas}>
+        <div className="filtros-linha">
+          {visiveis}
+          {(resto.length > 0 || extra || acoes) && (
+            <div className="filtros-botoes">
+              {resto.length > 0 && (
+                <button type="button" className={"btn filtros-mais-btn" + (mais ? " aberto" : "")} aria-expanded={mais} onClick={() => setMais(!mais)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+                  Mais filtros{ocultos > 0 && <span className="filtros-conta">{ocultos}</span>}
+                </button>
+              )}
+              {extra}
+            </div>
+          )}
+        </div>
+        {resto.length > 0 && (
+          <div className={"filtros-mais" + (mais ? " aberto" : "")} aria-hidden={!mais}>
+            <div className="filtros-mais-dentro">{resto}</div>
           </div>
         )}
+        {acoes && chips.length > 0 && (
+          <div className="filtros-chips" aria-label="Filtros em uso">
+            {chips.map((c) => (
+              <button type="button" key={c.nome} className="chip-filtro" title="Remover este filtro" onClick={() => tirar(c.nome)}>
+                {c.rot && <span className="chip-rot">{c.rot}:</span>} {c.valor}<span className="chip-x" aria-hidden="true">×</span>
+              </button>
+            ))}
+            {chips.length > 1 && <button type="button" className="chip-limpar" onClick={limparTudo}>Limpar tudo</button>}
+          </div>
+        )}
+        <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
       </form>
-    </>
+    </AutoCtx.Provider>
   );
 }
 
 /** Campo de texto ligado ao filtro (aplica só no Aplicar/Enter). */
 export function Texto({ f, nome, ...resto }: { f: Filtros; nome: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input name={nome} value={f.form[nome] || ""} onChange={(e) => f.set(nome, e.target.value)} {...resto} />;
+  const auto = useContext(AutoCtx);
+  const espera = useRef(0);
+  useEffect(() => () => window.clearTimeout(espera.current), []);
+  return (
+    <span className="campo-busca">
+      <input name={nome} value={f.form[nome] || ""} {...resto}
+        onChange={(e) => {
+          f.set(nome, e.target.value);
+          if (auto) { window.clearTimeout(espera.current); espera.current = window.setTimeout(() => f.aplicar(), 650); }
+        }}
+        onKeyDown={(e) => { if (e.key === "Enter") window.clearTimeout(espera.current); }} />
+      {f.form[nome] && auto && (
+        <button type="button" className="campo-limpar" aria-label="Limpar" tabIndex={-1}
+          onClick={() => { window.clearTimeout(espera.current); f.aplicar({ [nome]: f.padrao[nome] || "" }); }}>×</button>
+      )}
+    </span>
+  );
 }
 
 /** Data (aplica só no Aplicar/Enter). */
@@ -132,6 +239,8 @@ export function Escolha({ f, nome, lista, vazio, auto, className, children }: {
   f: Filtros; nome: string; lista?: Codigo[]; vazio?: string; auto?: boolean; className?: string; children?: ReactNode;
 }) {
   const valor = f.form[nome] || "";
+  const ctxAuto = useContext(AutoCtx);
+  auto = auto ?? ctxAuto;
   const conhecido = !lista || !valor || lista.some((x) => x.cod === valor);
   return (
     <select name={nome} className={className} value={valor}
@@ -146,6 +255,8 @@ export function Escolha({ f, nome, lista, vazio, auto, className, children }: {
 
 /** Caixa de marcar (valor "1" quando marcada). */
 export function Marcar({ f, nome, auto, children }: { f: Filtros; nome: string; auto?: boolean; children: ReactNode }) {
+  const ctxAuto = useContext(AutoCtx);
+  auto = auto ?? ctxAuto;
   return (
     <label className="check">
       <input type="checkbox" name={nome} value="1" checked={f.form[nome] === "1"}
@@ -169,6 +280,78 @@ export function Atalhos({ f }: { f: Filtros }) {
       {ops.map(([rot, fn]) => (
         <button key={rot} type="button" className="btn pequeno" onClick={() => { const [a, z] = fn(); f.aplicar({ ini: iso(a), fim: iso(z) }); }}>{rot}</button>
       ))}
+    </div>
+  );
+}
+
+const ATALHOS: [string, () => [Date, Date]][] = [
+  ["Este mês", () => { const h = new Date(); return [new Date(h.getFullYear(), h.getMonth(), 1), h]; }],
+  ["Mês passado", () => { const h = new Date(); return [new Date(h.getFullYear(), h.getMonth() - 1, 1), new Date(h.getFullYear(), h.getMonth(), 0)]; }],
+  ["Últimos 60 dias", () => { const h = new Date(); return [new Date(h.getTime() - 59 * 864e5), h]; }],
+  ["Últimos 90 dias", () => { const h = new Date(); return [new Date(h.getTime() - 89 * 864e5), h]; }],
+  ["Este ano", () => { const h = new Date(); return [new Date(h.getFullYear(), 0, 1), h]; }],
+  ["Últimos 12 meses", () => { const h = new Date(); return [new Date(h.getFullYear(), h.getMonth() - 11, 1), h]; }],
+];
+
+/**
+ * Período num botão só: mostra "01/11/2026 – 30/11/2026" (ou o nome do atalho) e abre um painel com os atalhos
+ * e as duas datas. `ini`/`fim`: datas que o servidor usou quando o filtro está vazio.
+ */
+export function Periodo({ f, ini, fim, rotulo = "Período" }: { f: Filtros; ini?: string; fim?: string; rotulo?: string }) {
+  const [aberto, setAberto] = useState(false);
+  const vi = f.form.ini || ini || "", vf = f.form.fim || fim || "";
+  const [a, setA] = useState(vi), [z, setZ] = useState(vf);
+  const caixa = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (aberto) { setA(vi); setZ(vf); } }, [aberto]);  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => { if (!caixa.current?.contains(e.target as Node)) setAberto(false); };
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  }, [aberto]);
+  const ativo = ATALHOS.find(([, fn]) => { const [x, y] = fn(); return iso(x) === vi && iso(y) === vf; });
+  const texto = ativo ? ativo[0] : vi || vf ? `${vi ? fmtData(vi) : "…"} – ${vf ? fmtData(vf) : "…"}` : "Qualquer data";
+  const botao = useRef<HTMLButtonElement>(null);
+  const ir = (x: string, y: string) => { f.aplicar({ ini: x, fim: y }); setAberto(false); botao.current?.focus(); };
+  useEffect(() => { if (aberto) caixa.current?.querySelector<HTMLElement>(".chip-periodo.ativo, .chip-periodo")?.focus(); }, [aberto]);
+  return (
+    <div className="filtro-rot filtro-periodo"><span>{rotulo}</span>
+      <div className="periodo" ref={caixa} onKeyDown={(e) => {
+        if (e.key === "Escape" && aberto) { e.stopPropagation(); setAberto(false); botao.current?.focus(); }
+        if (e.key === "ArrowDown" && !aberto && e.target === botao.current) { e.preventDefault(); setAberto(true); }
+        if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && (e.target as HTMLElement).classList.contains("chip-periodo")) {
+          e.preventDefault();
+          const l = Array.from(caixa.current?.querySelectorAll<HTMLElement>(".chip-periodo") || []);
+          const i = l.indexOf(e.target as HTMLElement);
+          l[(i + (e.key === "ArrowRight" ? 1 : -1) + l.length) % l.length]?.focus();
+        }
+      }}>
+        <button ref={botao} type="button" className={"periodo-botao campo" + (aberto ? " aberto" : "")} aria-haspopup="dialog" aria-expanded={aberto}
+          title={vi || vf ? `${fmtData(vi)} a ${fmtData(vf)}` : ""} onClick={() => setAberto(!aberto)}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
+          <span className="periodo-texto">{texto}</span>
+        </button>
+        {aberto && (
+          <div className="periodo-painel" role="dialog" aria-label={rotulo}>
+            <div className="periodo-atalhos">
+              {ATALHOS.map(([rot, fn]) => (
+                <button key={rot} type="button" className={"chip-periodo" + (ativo?.[0] === rot ? " ativo" : "")}
+                  onClick={() => { const [x, y] = fn(); ir(iso(x), iso(y)); }}>{rot}</button>
+              ))}
+            </div>
+            <div className="periodo-datas">
+              <label>De<input type="date" value={a} onChange={(e) => setA(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget.closest(".periodo-datas")?.querySelectorAll("input")[1] as HTMLInputElement | undefined)?.focus(); } }} /></label>
+              <label>Até<input type="date" value={z} onChange={(e) => setZ(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (a && z && a <= z) ir(a, z); } }} /></label>
+            </div>
+            <div className="periodo-acoes">
+              <button type="button" className="btn" onClick={() => setAberto(false)}>Cancelar</button>
+              <button type="button" className="btn primario" disabled={!a || !z || a > z} onClick={() => ir(a, z)}>Aplicar período</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -213,11 +396,28 @@ export function MultiEscolha({ f, nome, rotulo, lista, vazio, unidade = "tipos s
   return (
     <div className="filtro-rot"><span>{rotulo}</span>
       <input type="hidden" name={nome} value={valor} />
-      <div className="multi" ref={caixa} onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); abrir(false); } }}>
+      <div className="multi" ref={caixa} onKeyDown={(e) => {
+        if (e.key === "Escape" && aberto) { e.stopPropagation(); abrir(false); caixa.current?.querySelector<HTMLElement>(".multi-botao")?.focus(); }
+        if (e.key === "ArrowDown" && !aberto && (e.target as HTMLElement).classList.contains("multi-botao")) { e.preventDefault(); abrir(true); }
+        if (e.key === "Enter" && (e.target as HTMLInputElement).type === "checkbox") { e.preventDefault(); (e.target as HTMLInputElement).click(); }
+        if ((e.key === "ArrowDown" || e.key === "ArrowUp") && aberto && (e.target as HTMLElement).closest(".multi-painel")) {
+          e.preventDefault();
+          const l = Array.from(caixa.current?.querySelectorAll<HTMLElement>(".multi-painel > input, .multi-itens label:not([hidden]) input") || []);
+          const i = l.indexOf(e.target as HTMLElement);
+          l[Math.max(0, Math.min(l.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))]?.focus();
+        }
+      }}>
         <button type="button" className={"multi-botao campo" + (aberto ? " aberto" : "")} aria-haspopup="listbox"
           title={nomes.join(", ") || vazio} onClick={(e) => { e.stopPropagation(); abrir(!aberto); }}>{texto}</button>
         <div className="multi-painel" hidden={!aberto}>
-          <input ref={buscaRef} className="campo" placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input ref={buscaRef} className="campo" placeholder="Buscar… (ENTER fecha, ↓ vai para a lista)" value={q} onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              if (q.trim() && visiveis.length === 1) {       // um só resultado: ENTER marca/desmarca
+                const c = visiveis[0].cod; gravar(sel.includes(c) ? sel.filter((x) => x !== c) : [...sel, c]); setQ("");
+              } else { abrir(false); caixa.current?.querySelector<HTMLElement>(".multi-botao")?.focus(); }
+            }} />
           <div className="multi-acoes">
             <button type="button" className="btn pequeno" onClick={() => marcar(true)}>Marcar todos</button>
             <button type="button" className="btn pequeno" onClick={() => marcar(false)}>Limpar</button>

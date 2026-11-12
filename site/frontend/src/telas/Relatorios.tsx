@@ -6,7 +6,7 @@ import { fmtData, iso } from "../formatos";
 import { useNav } from "../navegacao";
 import { useAvisar } from "../componentes/Avisos";
 import { useGaveta } from "../componentes/Gaveta";
-import { Atalhos, Escolha, FormFiltros, Texto, paraBusca, useFiltros } from "../componentes/Filtros";
+import { Escolha, FormFiltros, Periodo, Texto, paraBusca, useFiltros } from "../componentes/Filtros";
 import {
   EditorLayout, Parametros, SERVIDOR_ANTIGO, Visoes, paramsDoSQL, parametrosSQL, respostaAntiga, useAvisosLocais, valoresIniciais,
   type Param, type RespVisoes,
@@ -272,16 +272,14 @@ export default function Relatorios() {
   };
 
   return <>
-    <FormFiltros f={f} acoes={false}>
-      <label>De<input type="date" name="ini" value={f.form.ini} onChange={(e) => f.set("ini", e.target.value)} /></label>
-      <label>Até<input type="date" name="fim" value={f.form.fim} onChange={(e) => f.set("fim", e.target.value)} /></label>
-      <Atalhos f={f} />
+    <FormFiltros f={f}>
+      <Periodo f={f} />
       <label>Tipo de movimento<Escolha f={f} nome="tipos" className="largo" lista={o?.tipos || []} vazio="Todos os tipos" /></label>
+      <label>Cliente / fornecedor<Texto f={f} nome="cliente" placeholder="código ou nome" /></label>
+      <label>Filial<Escolha f={f} nome="filial" lista={o?.filiais || []} vazio="Todas" /></label>
       <label>Tipo inicia com<Texto f={f} nome="prefixo" placeholder="ex.: 2.2" style={{ minWidth: 90, width: 100 }} /></label>
       <label>Vendedor / funcionário<Escolha f={f} nome="vendedor" className="largo" lista={o?.vendedores || []} vazio="Todos" /></label>
-      <label>Cliente / fornecedor<Texto f={f} nome="cliente" placeholder="código ou nome" /></label>
       <label>Local de estoque<Escolha f={f} nome="local" lista={o?.locais || []} vazio="Todos os locais" /></label>
-      <label>Filial<Escolha f={f} nome="filial" lista={o?.filiais || []} vazio="Todas" /></label>
     </FormFiltros>
     <div className="cartao">
       <div className="cartao-cab"><h2>Relatórios prontos <span className="sub">· usam os filtros acima quando se aplicam</span></h2></div>

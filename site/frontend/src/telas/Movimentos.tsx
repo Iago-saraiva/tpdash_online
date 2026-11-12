@@ -6,7 +6,7 @@ import { Kpis } from "../componentes/Kpis";
 import { Barras, Colunas, type ItemBarra } from "../componentes/Graficos";
 import { Tabela, type DadosTabela } from "../componentes/Tabela";
 import { useAbrirDocumento } from "../componentes/Documento";
-import { Atalhos, Escolha, Exportar, FormFiltros, MultiEscolha, Texto, useDados, useFiltros } from "../componentes/Filtros";
+import { Escolha, Exportar, FormFiltros, MultiEscolha, Periodo, Texto, useDados, useFiltros } from "../componentes/Filtros";
 
 interface Resp {
   kpis: { qtd: number; valor: number; bruto: number; clientes: number };
@@ -36,16 +36,14 @@ export default function Movimentos() {
   return (
     <div className={carregando ? "carregando" : ""} style={{ display: "contents" }}>
       <FormFiltros f={f} aoLimpar={() => f.limpar()}>
-        <label>De<input type="date" name="ini" value={ini} onChange={(e) => f.set("ini", e.target.value)} /></label>
-        <label>Até<input type="date" name="fim" value={fim} onChange={(e) => f.set("fim", e.target.value)} /></label>
-        <Atalhos f={f} />
+        <Periodo f={f} ini={ini} fim={fim} />
         <label>Tipo de movimento<Escolha f={f} nome="tipos" className="largo" lista={o?.tipos || []} vazio="Todos os tipos" /></label>
+        <label>Cliente<Texto f={f} nome="cliente" placeholder="código ou nome" /></label>
+        <label>Filial<Escolha f={f} nome="filial" lista={o?.filiais || []} vazio="Todas" /></label>
         <label>Tipo inicia com<Texto f={f} nome="prefixo" placeholder="ex.: 2.2" style={{ minWidth: 90, width: 100 }} /></label>
         <label>Vendedor / funcionário<Escolha f={f} nome="vendedor" className="largo" lista={o?.vendedores || []} vazio="Todos" /></label>
-        <label>Cliente<Texto f={f} nome="cliente" placeholder="código ou nome" /></label>
         <MultiEscolha f={f} nome="ccusto" rotulo="Centro de custo" lista={o?.ccustos || []} vazio="Todos" unidade="centros selecionados" />
         <MultiEscolha f={f} nome="depto" rotulo="Departamento" lista={o?.departamentos || []} vazio="Todos" unidade="departamentos selecionados" />
-        <label>Filial<Escolha f={f} nome="filial" auto lista={o?.filiais || []} vazio="Todas" /></label>
         <label>Cancelados<Escolha f={f} nome="cancelados" auto>
           <option value="">Sem cancelados</option><option value="1">Incluir cancelados</option><option value="so">Apenas cancelados</option>
         </Escolha></label>

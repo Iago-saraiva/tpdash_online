@@ -7,7 +7,7 @@ import { Kpis } from "../componentes/Kpis";
 import { Campos, useGaveta } from "../componentes/Gaveta";
 import { Tabela, type Celula, type DadosTabela } from "../componentes/Tabela";
 import { Erro, useAbrirDocumento } from "../componentes/Documento";
-import { Atalhos, Escolha, Exportar, FormFiltros, Marcar, Texto, paraBusca, useDados, useFiltros, type Valores } from "../componentes/Filtros";
+import { Escolha, Exportar, FormFiltros, Marcar, Periodo, Texto, paraBusca, useDados, useFiltros, type Valores } from "../componentes/Filtros";
 
 const ROT_MOV: Record<string, string> = { SALDO: "Saldo atual", ENTRADAS: "Qtd. entradas", SAIDAS: "Qtd. saídas", MOVIMENTOS: "Lançamentos",
   ULTIMO: "Último movimento", QTD_TOTAL: "Quantidade", ENTRADA: "Entrada", SAIDA: "Saída", MOVIMENTO: "Movimento" };
@@ -100,12 +100,10 @@ export default function Movimentacoes() {
       </div>
       <div className="secao">
         <FormFiltros f={f} aoLimpar={() => f.limpar({ aba })}>
-          <label>De<input type="date" name="ini" value={f.form.ini || ""} onChange={(e) => f.set("ini", e.target.value)} /></label>
-          <label>Até<input type="date" name="fim" value={f.form.fim || ""} onChange={(e) => f.set("fim", e.target.value)} /></label>
-          <Atalhos f={f} />
-          <label>Filial<Escolha f={f} nome="filial" auto lista={o?.filiais || []} vazio="Todas" /></label>
-          <label>Grupo<Escolha f={f} nome="grupo" className="largo" auto lista={o?.grupos || []} vazio="Todos os grupos" /></label>
+          <Periodo f={f} />
           <label>Produto<Texto f={f} nome="busca" placeholder="código ou nome" className="largo" /></label>
+          <label>Grupo<Escolha f={f} nome="grupo" className="largo" auto lista={o?.grupos || []} vazio="Todos os grupos" /></label>
+          <label>Filial<Escolha f={f} nome="filial" auto lista={o?.filiais || []} vazio="Todas" /></label>
           <Marcar f={f} nome="com_mov" auto>só produtos com movimento</Marcar>
           <Marcar f={f} nome="inativos" auto>incluir inativos</Marcar>
         </FormFiltros>

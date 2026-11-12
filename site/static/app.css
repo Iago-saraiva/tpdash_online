@@ -947,3 +947,118 @@ input:focus, select:focus, textarea:focus, .campo:focus { outline: none; border-
 .temas-menu .amostra { width: 18px; height: 18px; border-radius: 50%; flex: none; border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15); }
 .temas-caixa { position: relative; display: inline-flex; }
 
+
+/* =====================================================================================================
+   Filtros: campos principais numa linha, "Mais filtros" recolhível, etiquetas dos filtros em uso,
+   período num botão só e aplicação automática.
+   ===================================================================================================== */
+.filtros { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 12px 14px; position: relative; overflow: visible; }
+.filtros-linha, .filtros-mais-dentro { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; }
+.filtros label, .filtros .filtro-rot { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--texto-3); gap: 5px; }
+.filtros label.check, .filtros .multi-itens label { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 13px; color: var(--texto); }
+.filtros input, .filtros select, .filtros .campo { height: 38px; border-radius: 10px; font-size: 14px; text-transform: none; letter-spacing: 0; font-weight: 400;
+  transition: border-color .18s var(--curva), box-shadow .18s var(--curva), background-color .18s var(--curva); }
+.filtros input:hover, .filtros select:hover, .filtros .campo:hover { border-color: color-mix(in srgb, var(--acento) 45%, var(--borda)); }
+.filtros input:focus-visible, .filtros select:focus-visible, .filtros .campo:focus-visible, .filtros button:focus-visible {
+  outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 28%, transparent); }
+.filtros label.check { padding: 0 2px; height: 38px; align-self: flex-end; cursor: pointer; }
+.filtros label.check input { accent-color: var(--acento); width: 17px; height: 17px; }
+
+/* campo de texto com "×" para limpar */
+.campo-busca { position: relative; display: flex; }
+.campo-busca input { width: 100%; padding-right: 28px; }
+.campo-limpar { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border: 0; border-radius: 50%;
+  background: color-mix(in srgb, var(--texto) 14%, transparent); color: var(--texto); cursor: pointer; font-size: 15px; line-height: 1;
+  display: grid; place-items: center; animation: tp-aparece .15s var(--curva) both; }
+.campo-limpar:hover { background: color-mix(in srgb, var(--critico) 35%, transparent); }
+
+/* botões à direita da linha */
+.filtros-botoes { margin-left: auto; display: flex; gap: 8px; align-items: center; height: 38px; }
+.filtros-mais-btn { display: inline-flex; align-items: center; gap: 6px; height: 38px; border-radius: 10px; }
+.filtros-mais-btn svg { transition: transform .25s var(--curva); }
+.filtros-mais-btn.aberto svg { transform: rotate(180deg); }
+.filtros-conta { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--acento); color: var(--acento-texto, #fff);
+  font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; animation: tp-cresce .2s var(--curva) both; }
+
+/* "Mais filtros": abre deslizando */
+.filtros-mais { max-height: 0; overflow: hidden; visibility: hidden; opacity: 0;
+  transition: max-height .3s var(--curva), opacity .25s var(--curva), visibility 0s .3s; }
+.filtros-mais.aberto { max-height: 600px; visibility: visible; opacity: 1; animation: tp-solta 0s .32s forwards;
+  transition: max-height .35s var(--curva), opacity .25s var(--curva), visibility 0s; }
+.filtros-mais-dentro { padding-top: 12px; }
+@keyframes tp-solta { to { overflow: visible; } }
+
+/* etiquetas dos filtros em uso */
+.filtros-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-top: 10px; margin-top: 10px; border-top: 1px dashed var(--borda); }
+.chip-filtro { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 6px 0 11px; border-radius: 99px; cursor: pointer; font: inherit; font-size: 12.5px;
+  border: 1px solid color-mix(in srgb, var(--acento) 40%, transparent); background: color-mix(in srgb, var(--acento) 14%, transparent); color: var(--texto);
+  animation: tp-cresce .22s var(--curva) both; transition: background .15s var(--curva), border-color .15s var(--curva), transform .15s var(--curva); max-width: 320px; }
+.chip-filtro .chip-rot { color: var(--texto-2); }
+.chip-filtro .chip-x { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; margin-left: 2px; font-size: 14px;
+  background: color-mix(in srgb, var(--texto) 12%, transparent); transition: background .15s var(--curva); }
+.chip-filtro:hover { border-color: var(--critico); }
+.chip-filtro:hover .chip-x { background: var(--critico); color: #fff; }
+.chip-filtro:active { transform: scale(.96); }
+.chip-limpar { border: 0; background: none; color: var(--texto-2); font: inherit; font-size: 12.5px; text-decoration: underline; cursor: pointer; padding: 0 6px; }
+.chip-limpar:hover { color: var(--critico); }
+
+/* período num botão */
+.periodo { position: relative; }
+.periodo-botao { display: inline-flex; align-items: center; gap: 8px; min-width: 210px; cursor: pointer; text-align: left; padding: 0 12px; }
+.periodo-botao svg { color: var(--acento); flex: none; }
+.periodo-botao.aberto { border-color: var(--acento); }
+.periodo-texto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.periodo-painel { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 340px; max-width: calc(100vw - 32px); padding: 12px;
+  background: var(--solida, var(--superficie)); border: 1px solid var(--borda); border-radius: 14px; box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+  display: flex; flex-direction: column; gap: 12px; animation: tp-sobe .2s var(--curva) both; text-transform: none; letter-spacing: 0; }
+.periodo-atalhos { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-periodo { height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--borda); background: transparent; color: var(--texto); font: inherit; font-size: 13px;
+  cursor: pointer; transition: background .15s var(--curva), border-color .15s var(--curva); }
+.chip-periodo:hover { border-color: var(--acento); }
+.chip-periodo.ativo { background: var(--acento); border-color: var(--acento); color: var(--acento-texto, #fff); font-weight: 600; }
+.chip-periodo:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 35%, transparent); }
+.periodo-datas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.periodo-datas input { width: 100%; min-width: 0; }
+.periodo-acoes { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* escolha múltipla no mesmo estilo */
+.filtros .multi-botao { border-radius: 10px; }
+.filtros .multi-painel { border-radius: 14px; padding: 10px; box-shadow: 0 16px 40px rgba(0, 0, 0, .35); background: var(--solida, var(--superficie));
+  animation: tp-sobe .2s var(--curva) both; text-transform: none; letter-spacing: 0; }
+
+/* carregando: barrinha correndo embaixo dos filtros */
+.carregando .filtros::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--acento), transparent); background-size: 40% 100%; background-repeat: no-repeat;
+  animation: tp-corre 1.1s linear infinite; }
+@keyframes tp-corre { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+
+/* celular */
+.filtros-toggle { gap: 8px; align-items: center; }
+.filtros-toggle .filtros-conta { margin-left: 2px; }
+@media (max-width: 760px) {
+  .filtros-linha > label:not(.check), .filtros-linha > .filtro-rot { flex: 1 1 100%; }
+  .filtros-botoes { margin-left: 0; width: 100%; height: auto; }
+  .filtros-botoes .btn { flex: 1; justify-content: center; height: 40px; }
+  .periodo-botao { width: 100%; }
+  .periodo-painel { left: 0; right: 0; width: auto; max-width: none; }
+  .filtros .filtro-periodo { flex: 1 1 100% !important; }
+  .periodo-datas input { padding: 0 8px; }
+  .filtros input, .filtros select, .filtros .campo { height: 42px; font-size: 16px; }
+  form.filtros:not(.recolhido) { animation: tp-sobe .25s var(--curva) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .filtros-mais, .filtros-mais-dentro, .chip-filtro, .periodo-painel, .filtros-conta, .campo-limpar { transition: none !important; animation: none !important; }
+  .filtros-mais.aberto { overflow: visible; }
+  .carregando .filtros::after { animation: none; }
+}
+.filtros-linha > label:not(.check), .filtros-linha > .filtro-rot, .filtros-mais-dentro > label:not(.check), .filtros-mais-dentro > .filtro-rot { flex: 1 1 170px; min-width: 0; max-width: 340px; }
+.filtros-linha > label:not(.check) :is(input, select), .filtros-mais-dentro > label:not(.check) :is(input, select) { width: 100%; min-width: 0; }
+.filtros .filtro-periodo { flex: 0 1 230px !important; }
+.filtros .filtro-periodo .periodo-botao { width: 100%; min-width: 0; }
+.filtros .filtro-rot .multi-botao { width: 100%; max-width: none; min-width: 0; }
+.filtros-botoes { flex: 0 0 auto; }
+.filtros { z-index: 4; }   /* painéis do período e da escolha múltipla ficam por cima dos cartões */
+.filtros-linha > label:has(> .campo-busca > input[style]), .filtros-mais-dentro > label:has(> .campo-busca > input[style]) { flex: 0 0 auto; }
+@media (max-width: 760px) { .filtros-linha > label:has(> .campo-busca > input[style]) { flex: 1 1 100%; } .filtros .campo-busca input[style] { width: 100% !important; } }
+.filtros .periodo-datas input { min-width: 0; width: 100%; }
+@media (max-width: 760px) { .filtros .filtro-periodo { flex: 1 1 100% !important; } }

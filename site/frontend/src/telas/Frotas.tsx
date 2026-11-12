@@ -9,7 +9,7 @@ import { Campos, useGaveta } from "../componentes/Gaveta";
 import { Tabela, type Celula, type DadosTabela } from "../componentes/Tabela";
 import { Erro, useAbrirDocumento } from "../componentes/Documento";
 import { useAvisar } from "../componentes/Avisos";
-import { Atalhos, Escolha, Exportar, FormFiltros, Texto, paraBusca, useDados, useFiltros, type Valores } from "../componentes/Filtros";
+import { Escolha, Exportar, FormFiltros, Periodo, Texto, paraBusca, useDados, useFiltros, type Valores } from "../componentes/Filtros";
 
 const ROT_FROTA: Record<string, string> = { CODMAQUINA: "Máquina", DESCRICAO: "Descrição", ABASTECIMENTOS: "Abastec.", LITROS: "Litros",
   VALOR_COMBUSTIVEL: "Combustível (R$)", PRECO_LITRO: "R$ / litro", MANUTENCOES: "Manutenções", VALOR_MANUTENCAO: "Manutenção (R$)",
@@ -176,19 +176,12 @@ function Painel({ cfg, escolhidos, abrirConfig }: { cfg: Config; escolhidos: [st
   const k = d?.kpis;
   return (
     <div className={carregando ? "carregando" : ""} style={{ display: "contents" }}>
-      <FormFiltros f={f} acoes={false}>
-        <label>De<input type="date" name="ini" value={ini} onChange={(e) => f.set("ini", e.target.value)} /></label>
-        <label>Até<input type="date" name="fim" value={fim} onChange={(e) => f.set("fim", e.target.value)} /></label>
-        <Atalhos f={f} />
+      <FormFiltros f={f} extra={cfg.pode_configurar && <button type="button" className="btn" title="Escolher os movimentos de abastecimento e manutenção" onClick={abrirConfig}>Movimentos…</button>}>
+        <Periodo f={f} ini={ini} fim={fim} />
         <label>Máquina<Escolha f={f} nome="maquina" className="largo" auto lista={listas?.maquinas || []} vazio="Todas as máquinas" /></label>
+        <label>Busca<Texto f={f} nome="busca" placeholder="placa, código ou nome" /></label>
         <label>Grupo<Escolha f={f} nome="grupo" auto lista={listas?.grupos || []} vazio="Todos" /></label>
         <label>Filial<Escolha f={f} nome="filial" auto lista={o?.filiais || []} vazio="Todas" /></label>
-        <label>Busca<Texto f={f} nome="busca" placeholder="placa, código ou nome" /></label>
-        <div className="acoes">
-          {cfg.pode_configurar && <button type="button" className="btn" title="Escolher os movimentos de abastecimento e manutenção" onClick={abrirConfig}>Movimentos…</button>}
-          <button type="button" className="btn" onClick={() => f.limpar()}>Limpar</button>
-          <button className="btn primario">Aplicar</button>
-        </div>
       </FormFiltros>
       <p className="nota">{`Abastecimentos pelos movimentos ${nomes("abastecimento")} e manutenções pelos movimentos ${nomes("manutencao")}, ligados à máquina informada no movimento. Cancelados não entram.`}</p>
       <div className="kpis">
