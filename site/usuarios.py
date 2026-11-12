@@ -1,6 +1,7 @@
 """Usuários, permissões por módulo e consultas salvas (SQLite local do painel)."""
 import datetime as dt
 import json
+import logging
 import os
 import sqlite3
 import time
@@ -232,9 +233,14 @@ def trocar_senha(uid, atual, nova):
 
 
 def registrar(usuario, acao, detalhe=""):
-    with _con() as con:
-        con.execute("INSERT INTO acessos (usuario, acao, detalhe, quando, empresa_id) VALUES (?,?,?,?,?)",
-                    (usuario, acao, (detalhe or "")[:2000], dt.datetime.now().isoformat(" ", "seconds"), _empresa()))
+    """Histórico de acessos. Se a gravação falhar (ex.: banco cheio), só avisa no log: login, agente e telas seguem."""
+    try:
+        with _con() as con:
+            con.execute("INSERT INTO acessos (usuario, acao, detalhe, quando, empresa_id) VALUES (?,?,?,?,?)",
+                        (usuario, acao, (detalhe or "")[:2000], dt.datetime.now().isoformat(" ", "seconds"), _empresa()))
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger("usuarios").warning("Não gravei no histórico de acessos (%s: %s): %s",
+                                              usuario, acao, str(e).splitlines()[0][:200])
 
 
 def ultimos_acessos(n=200):

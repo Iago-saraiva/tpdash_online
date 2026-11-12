@@ -28,3 +28,13 @@
 .ficha-dias small { font-size: 10.5px; color: var(--texto-2); }
 .tabela-rolar { overflow-x: auto; }
 @media (max-width: 900px) { .ficha-grade { grid-template-columns: 1fr; } }
+/* uso do banco do site (Neon) */
+.adm-resumo .banco .barra-banco { height: 6px; border-radius: 99px; background: rgba(127, 127, 127, 0.25); margin-top: 8px; overflow: hidden; }
+.adm-resumo .banco .barra-banco span { display: block; height: 100%; border-radius: 99px; background: var(--bom, #2e9e5b); transition: width .6s var(--curva, ease); }
+.adm-resumo .banco.alerta .barra-banco span { background: var(--alerta, #c88a04); }
+.adm-resumo .banco.critico .barra-banco span { background: var(--critico, #d64545); }
+.adm-resumo .banco.alerta .num { color: var(--alerta, #c88a04); }
+.adm-resumo .banco.critico .num { color: var(--critico, #d64545); }
+.aviso-banco { padding: 10px 14px; border-radius: 12px; font-size: 14px; margin: 4px 0 2px; border: 1px solid transparent; }
+.aviso-banco.alerta { background: var(--alerta-fundo, #fff4d6); color: var(--alerta, #8a5a00); border-color: currentColor; }
+.aviso-banco.critico { background: var(--critico-fundo, #fde3e3); color: var(--critico, #a12626); border-color: currentColor; }

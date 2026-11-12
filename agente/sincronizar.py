@@ -120,6 +120,14 @@ def pedir_carga_completa(eid):
     _gravar_estado(eid, est)
 
 
+def pedir_envio_agora(eid):
+    """Chamado pela janela (botão "Enviar agora"): a rodada começa em segundos, mesmo fora do intervalo,
+    no horário de pausa ou com a sincronização automática desligada. Manda só o que mudou."""
+    est = ler_estado(eid)
+    est["agora"] = True
+    _gravar_estado(eid, est)
+
+
 def _gravar_estado(eid, est):
     os.makedirs(os.path.dirname(arquivo_estado(eid)), exist_ok=True)
     tmp = arquivo_estado(eid) + ".novo"
@@ -234,10 +242,11 @@ class Sincronizador:
     def resumo(self):
         est = ler_estado(self.eid)
         cfg = ler_config()
-        return {k: est.get(k) for k in ("ultima", "proxima", "duracao_s", "inseridas", "alteradas", "apagadas",
-                                        "carga_inicial", "erro", "tabelas", "linhas")} | {
-            "intervalo_min": cfg["intervalo_min"] if cfg["ativa"] else None, "ativa": cfg["ativa"],
-            "pausa": f"{cfg['pausa_inicio']} às {cfg['pausa_fim']}" if cfg["pausa_inicio"] else ""}
+        r = {k: est.get(k) for k in ("ultima", "proxima", "duracao_s", "inseridas", "alteradas", "apagadas",
+                                     "carga_inicial", "erro", "tabelas", "linhas")}
+        r.update({"intervalo_min": cfg["intervalo_min"] if cfg["ativa"] else None, "ativa": cfg["ativa"],
+                  "pausa": f"{cfg['pausa_inicio']} às {cfg['pausa_fim']}" if cfg["pausa_inicio"] else ""})
+        return r
 
     def laco(self):
         """Espera o intervalo, roda, repete. A primeira rodada começa logo depois de o agente conectar."""
@@ -245,17 +254,18 @@ class Sincronizador:
         while not self.ag.parar.wait(espera):
             cfg = ler_config()
             est = ler_estado(self.eid)
-            if not cfg["ativa"]:
-                espera = 60
+            manual = bool(est.get("agora"))         # botão "Enviar agora": não espera intervalo nem pausa
+            if not cfg["ativa"] and not manual:
+                espera = 10
                 continue
             ultima = est.get("ultima_ts") or 0
             falta = ultima + cfg["intervalo_min"] * 60 - time.time()
-            if est.get("refazer") or not est.get("carga_completa"):
+            if manual or est.get("refazer") or not est.get("carga_completa"):
                 falta = min(falta, 0)
             if falta > 0:
-                espera = min(falta, 60)
+                espera = min(falta, 10)
                 continue
-            if em_pausa(cfg):
+            if em_pausa(cfg) and not manual:
                 espera = 60
                 continue
             try:
@@ -284,6 +294,9 @@ class Sincronizador:
         est = ler_estado(self.eid)
         foto = Foto(self.eid)
         try:
+            if est.pop("agora", None):
+                log.info("[%s] Sincronização: envio manual pedido na janela", self.eid)
+                _gravar_estado(self.eid, est)
             if est.get("refazer"):
                 foto.esquecer()
                 est.pop("refazer", None)
@@ -320,8 +333,11 @@ class Sincronizador:
                 est["carga_inicial"] = f"concluída {fim.strftime('%d/%m %H:%M')} ({dur:.0f} s)"
             elif not est.get("carga_completa"):
                 est["carga_inicial"] = "em andamento"
-            if ler_estado(self.eid).get("refazer"):      # pedido na janela durante a rodada: vale para a próxima
+            agora_est = ler_estado(self.eid)           # pedidos na janela durante a rodada: valem para a próxima
+            if agora_est.get("refazer"):
                 est["refazer"] = True
+            if agora_est.get("agora"):
+                est["agora"] = True
             _gravar_estado(self.eid, est)
             log.info("[%s] Sincronização: %s novas, %s alteradas, %s apagadas em %.1f s (%s linhas no total)",
                      self.eid, tot["inseridas"], tot["alteradas"], tot["apagadas"], dur, linhas_total)

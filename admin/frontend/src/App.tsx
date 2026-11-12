@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
-import type { Aviso, Empresa, Modulos, Usuario } from "./tipos";
+import type { Aviso, Empresa, Modulos, Usuario, UsoBanco } from "./tipos";
 import Resumo from "./componentes/Resumo";
 import TabelaEmpresas from "./componentes/TabelaEmpresas";
 import NovaEmpresa from "./componentes/NovaEmpresa";
@@ -13,6 +13,7 @@ let proximoAviso = 1;
 
 export default function App() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [banco, setBanco] = useState<UsoBanco | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [modulos, setModulos] = useState<Modulos>({});
   const [escolhida, setEscolhida] = useState("");          // empresa selecionada ("" = todas)
@@ -29,10 +30,11 @@ export default function App() {
 
   const carregar = useCallback(async () => {
     const [e, u] = await Promise.all([
-      api<{ empresas: Empresa[] }>("/api/empresas"),
+      api<{ empresas: Empresa[]; banco?: UsoBanco | null }>("/api/empresas"),
       api<{ usuarios: Usuario[]; modulos: Modulos }>("/api/usuarios"),
     ]);
     setEmpresas(e.empresas);
+    setBanco(e.banco || null);
     setUsuarios(u.usuarios);
     setModulos(u.modulos);
     setCarregado(true);
@@ -65,7 +67,7 @@ export default function App() {
         Cadastro de todas as empresas clientes do TP DASH online: chaves dos agentes, filiais e usuários de cada empresa.
         Os usuários de uma empresa só enxergam os dados dela no TP DASH.
       </p>
-      {carregado && <Resumo empresas={empresas} usuarios={usuarios} />}
+      {carregado && <Resumo empresas={empresas} usuarios={usuarios} banco={banco} />}
       <div className="grade">
         <div className="cartao c8" style={{ alignSelf: "start" }}>
           <TabelaEmpresas

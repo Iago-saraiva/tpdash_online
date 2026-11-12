@@ -302,6 +302,28 @@ def _empresas_com_estado():
     return lista
 
 
+_BANCO = {"lido": 0, "info": None}
+
+
+def _uso_banco():
+    """Espaço usado no banco do site (PostgreSQL/Neon) e o limite do plano, para o aviso do painel.
+    Limite em MB pela variável TPDASH_LIMITE_BANCO_MB (padrão 1024). Lido no máximo a cada 5 minutos."""
+    if time.time() - _BANCO["lido"] < 300:
+        return _BANCO["info"]
+    info = None
+    try:
+        import banco_site
+        if banco_site.POSTGRES:
+            with usuarios._con() as con:
+                usado = int(con.execute("SELECT pg_database_size(current_database()) AS n").fetchone()["n"])
+            limite = max(1, int(float(os.environ.get("TPDASH_LIMITE_BANCO_MB") or 1024))) * 1024 * 1024
+            info = {"usado": usado, "limite": limite, "pct": round(usado * 100 / limite, 1)}
+    except Exception:  # noqa: BLE001 - sem o número, o painel só não mostra o cartão
+        info = None
+    _BANCO.update(lido=time.time(), info=info)
+    return info
+
+
 @app.route("/api/empresas", methods=["GET", "POST"])
 @exige
 def api_empresas():
@@ -313,7 +335,7 @@ def api_empresas():
             return jsonify(erro=str(e)), 400
         usuarios.registrar(g.usuario["login"], "salvou empresa (TP DASH ADMIN)", eid)
         return jsonify(ok=True, id=eid)
-    return jsonify(empresas=_empresas_com_estado())
+    return jsonify(empresas=_empresas_com_estado(), banco=_uso_banco())
 
 
 @app.route("/api/empresas/<eid>/chave", methods=["POST"])

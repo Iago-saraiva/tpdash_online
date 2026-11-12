@@ -571,7 +571,8 @@ def abrir_janela():
                 mud = (f"{est.get('inseridas', 0)} novas, {est.get('alteradas', 0)} alt., {est.get('apagadas', 0)} apag."
                        if est.get("ultima") else "")
                 carga = "refazer na próxima" if est.get("refazer") else (est.get("carga_inicial") or "pendente")
-                arv.insert("", "end", iid=e["id"], values=(e.get("nome") or e["id"], carga, ult, mud, est.get("proxima") or ""))
+                prox = "em instantes" if est.get("agora") else (est.get("proxima") or "")
+                arv.insert("", "end", iid=e["id"], values=(e.get("nome") or e["id"], carga, ult, mud, prox))
                 if est.get("erro"):
                     erros.append(f"{e.get('nome') or e['id']}: {est['erro']}")
             if sel and arv.exists(sel[0]):
@@ -579,6 +580,18 @@ def abrir_janela():
             lb_erro.config(text="\n".join(erros))
             if agendar:
                 pai.after(10000, lambda: atualizar(True))
+
+        def enviar_agora():
+            s_ = arv.selection()
+            if not s_ and len(d["empresas"]) == 1:
+                s_ = (d["empresas"][0]["id"],)
+            if not s_:
+                messagebox.showinfo(TITULO, "Escolha a empresa na lista.")
+                return
+            sincronizar.pedir_envio_agora(s_[0])
+            atualizar()
+            messagebox.showinfo(TITULO, "Envio pedido. O agente começa a mandar as mudanças para o site em até 10 segundos "
+                                        "(o agente precisa estar em funcionamento). Acompanhe em \"Última rodada\".")
 
         def refazer():
             s_ = arv.selection()
@@ -589,6 +602,7 @@ def abrir_janela():
                 sincronizar.pedir_carga_completa(s_[0])
                 atualizar()
 
+        ttk.Button(bt, text="Enviar agora", command=enviar_agora).pack(fill="x", pady=2)
         ttk.Button(bt, text="Atualizar", command=atualizar).pack(fill="x", pady=2)
         ttk.Button(bt, text="Refazer carga", command=refazer).pack(fill="x", pady=2)
         atualizar(True)

@@ -11,6 +11,8 @@ export interface Sincronizacao {
   ativa?: boolean; pausa?: string; linhas?: number; tabelas?: number;
 }
 
+export interface UsoBanco { usado: number; limite: number; pct: number }
+
 export interface Copia { tabelas: number; linhas: number; atualizada: string | null; bytes: number | null }
 
 export interface InfoAgente {

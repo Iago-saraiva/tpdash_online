@@ -15,6 +15,11 @@ _PADRAO_STATUS_MOV = {"C": "Cancelado"}
 _PADRAO_STATUS_LAN = {"A": "Em aberto", "B": "Baixado", "C": "Cancelado"}
 
 
+
+def _sem_sufixo(texto, sufixo):
+    """Igual a str.removesuffix (que só existe a partir do Python 3.9; o agente também roda no 3.8)."""
+    return texto[:-len(sufixo)] if sufixo and texto.endswith(sufixo) else texto
+
 def _garantir_config():
     """Cria config.ini a partir do exemplo na primeira execução, com chave secreta própria."""
     if os.path.exists(CONFIG_PATH):
@@ -85,7 +90,7 @@ def carregar():
         "lembrar_dias": int(s.get("lembrar_dias", "30")),
         "nome_empresa": s.get("nome_empresa", "TP DASH").strip(),
         "https": s.get("https", "nao").strip().lower() in ("sim", "s", "1", "true", "yes"),
-        "nome_local": s.get("nome_local", "painel").strip().lower().removesuffix(".local"),
+        "nome_local": _sem_sufixo(s.get("nome_local", "painel").strip().lower(), ".local"),
         "nomes": [x.strip() for x in s.get("nomes", "").replace(";", ",").split(",") if x.strip()],
         "permitir": [x.strip() for x in s.get("permitir", "").replace(";", ",").split(",") if x.strip()],
         "rb_sync_minutos": int((cp["relatorios"] if cp.has_section("relatorios") else {}).get("sincronizar_minutos", "10")),
